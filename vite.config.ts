@@ -6,6 +6,9 @@ import { defineConfig } from "vitest/config";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  // Relative asset URLs so the app works when hosted under a subpath (e.g. GitHub Pages)
+  // and avoids 404s for /assets/* when the site root is not the server root.
+  base: "./",
   plugins: [react()],
   resolve: {
     alias: {
