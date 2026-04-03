@@ -66,7 +66,7 @@ function linearPredict(
   for (let k = 0; k < values.length; k++) {
     const v = values[k];
     const sk = scales[k] ?? 0;
-    if (v !== null && !Number.isNaN(v) && sk > 0) {
+    if (v != null && !Number.isNaN(v) && sk > 0) {
       L += (coeffs[k] ?? 0) * ((v - (means[k] ?? 0)) / sk);
     }
   }

@@ -1,7 +1,6 @@
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -26,10 +25,16 @@ function zVal(
   return z3d[o] ?? 0;
 }
 
-function cls(v: number) {
-  if (v >= 0.3) return "border-red-500/80 bg-red-500/10";
-  if (v >= 0.15) return "border-amber-500/80 bg-amber-500/10";
-  return "border-emerald-600/50 bg-emerald-500/5";
+function riskBg(v: number) {
+  if (v >= 0.3) return "border-red-500/60 bg-red-500/10";
+  if (v >= 0.15) return "border-amber-500/50 bg-amber-500/8";
+  return "border-border/50 bg-muted/30";
+}
+
+function riskText(v: number) {
+  if (v >= 0.3) return "text-red-500";
+  if (v >= 0.15) return "text-amber-500";
+  return "text-emerald-500";
 }
 
 function barColor(v: number) {
@@ -39,22 +44,20 @@ function barColor(v: number) {
 }
 
 export function ZoneDiagram() {
-  const patients = usePatientStore((s) => s.patients);
-  const activeId = usePatientStore((s) => s.activeId);
+  const patients   = usePatientStore((s) => s.patients);
+  const activeId   = usePatientStore((s) => s.activeId);
   const threeZones = usePatientStore((s) => s.threeZones);
-  const overlay = useUiStore((s) => s.overlay);
+  const overlay    = useUiStore((s) => s.overlay);
+
   const entry = patients.find((p) => p.id === activeId);
   if (!entry) return null;
 
   const zones = entry.record.zones;
   const label =
-    overlay === "cancer"
-      ? "Cancer"
-      : overlay === "ece"
-        ? "ECE"
-        : overlay === "svi"
-          ? "SVI"
-          : "PSM";
+    overlay === "cancer" ? "Cancer"
+    : overlay === "ece"  ? "ECE"
+    : overlay === "svi"  ? "SVI"
+    : "PSM";
 
   const box = (id: string, short: string) => {
     const v = zVal(id, overlay, zones, threeZones);
@@ -63,14 +66,14 @@ export function ZoneDiagram() {
       <div
         key={id}
         className={cn(
-          "relative overflow-hidden rounded border px-1 py-1 text-center",
-          cls(v),
+          "relative overflow-hidden rounded-lg border px-1 py-1.5 text-center",
+          riskBg(v),
         )}
       >
-        <div className="text-[10px] font-bold">{short}</div>
-        <div className="text-[9px] text-muted-foreground">{pct}%</div>
+        <div className="text-[10px] font-bold text-foreground/80">{short}</div>
+        <div className={cn("text-[9px] font-semibold tabular-nums", riskText(v))}>{pct}%</div>
         <div
-          className={cn("absolute bottom-0 left-0 h-0.5", barColor(v))}
+          className={cn("absolute bottom-0 left-0 h-0.5 opacity-80", barColor(v))}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -78,33 +81,45 @@ export function ZoneDiagram() {
   };
 
   return (
-    <Card className="border-border/70">
-      <CardHeader className="border-b border-border/50 bg-gradient-to-br from-muted/40 to-transparent pb-3 dark:from-muted/25">
-        <CardTitle className="text-sm font-semibold text-foreground">
-          Zone map — {label}
-        </CardTitle>
-        <CardDescription>
-          Matches the overlay selected in the 3D viewer (csPCa, ECE, SVI, PSM).
-        </CardDescription>
+    <Card className="border-border">
+      <CardHeader className="border-b border-border bg-muted/20 pb-3 pt-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold text-foreground">
+            Zone Map
+          </CardTitle>
+          <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+            {label}
+          </span>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-3 pt-4 text-[10px]">
+
+      <CardContent className="space-y-4 pt-4">
+        {/* Anterior */}
         <div>
-          <div className="mb-1 text-[9px] uppercase tracking-wide text-muted-foreground">
-            Anterior
+          <div className="mb-1.5 flex items-center gap-2">
+            <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Anterior</div>
+            <div className="h-px flex-1 bg-border/40" />
           </div>
-          <div className="grid grid-cols-4 gap-1">
-            {box("4a", "RBase")}
-            {box("5a", "RMid")}
-            {box("6a", "RApex")}
-            {box("1a", "LBase")}
-            {box("2a", "LMid")}
-            {box("3a", "LApex")}
+          <div className="grid grid-cols-6 gap-1">
+            {box("4a", "RBs")}
+            {box("5a", "RMd")}
+            {box("6a", "RAp")}
+            {box("1a", "LBs")}
+            {box("2a", "LMd")}
+            {box("3a", "LAp")}
           </div>
         </div>
+
+        {/* Posterior */}
         <div>
-          <div className="mb-1 flex justify-between text-[9px] font-semibold text-muted-foreground">
-            <span>LEFT</span>
-            <span>RIGHT</span>
+          <div className="mb-1.5 flex items-center gap-2">
+            <div className="h-px flex-1 bg-border/40" />
+            <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Posterior</div>
+            <div className="h-px flex-1 bg-border/40" />
+          </div>
+          <div className="mb-1 flex justify-between px-0.5 text-[9px] font-semibold text-muted-foreground">
+            <span>← LEFT</span>
+            <span>RIGHT →</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="grid grid-cols-2 gap-1">
@@ -113,6 +128,7 @@ export function ZoneDiagram() {
               {box("3p", "LMm")}
               {box("4p", "LMl")}
               {box("5p", "LA")}
+              <div />
             </div>
             <div className="grid grid-cols-2 gap-1">
               {box("6p", "RBm")}
@@ -120,8 +136,29 @@ export function ZoneDiagram() {
               {box("8p", "RMm")}
               {box("9p", "RMl")}
               {box("10p", "RA")}
+              <div />
             </div>
           </div>
+        </div>
+
+        {/* Seminal vesicles */}
+        <div>
+          <div className="mb-1.5 flex items-center gap-2">
+            <div className="h-px flex-1 bg-border/40" />
+            <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Seminal Vesicles</div>
+            <div className="h-px flex-1 bg-border/40" />
+          </div>
+          <div className="grid grid-cols-2 gap-1">
+            {box("SV-L", "SV-L")}
+            {box("SV-R", "SV-R")}
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div className="flex items-center justify-end gap-3 border-t border-border/40 pt-2 text-[9px] text-muted-foreground">
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-500/30 border border-emerald-500/50" />Low</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-amber-500/20 border border-amber-500/50" />Moderate</span>
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-red-500/20 border border-red-500/50" />High</span>
         </div>
       </CardContent>
     </Card>

@@ -87,13 +87,13 @@ export function useThreeProstate(
         dragging.current = true;
         pinchRef.current = null;
         prevMouse.current = {
-          x: e.touches[0].clientX,
-          y: e.touches[0].clientY,
+          x: e.touches[0]!.clientX,
+          y: e.touches[0]!.clientY,
         };
       } else if (e.touches.length >= 2 && handlesRef.current) {
         dragging.current = false;
-        const t0 = e.touches[0];
-        const t1 = e.touches[1];
+        const t0 = e.touches[0]!;
+        const t1 = e.touches[1]!;
         pinchRef.current = {
           startDist: touchDist(t0, t1),
           startZ: handlesRef.current.camera.position.z,
@@ -105,8 +105,8 @@ export function useThreeProstate(
       if (!handlesRef.current) return;
       if (e.touches.length === 2 && pinchRef.current) {
         e.preventDefault();
-        const t0 = e.touches[0];
-        const t1 = e.touches[1];
+        const t0 = e.touches[0]!;
+        const t1 = e.touches[1]!;
         const d = touchDist(t0, t1);
         if (d < 1 || pinchRef.current.startDist < 1) return;
         const scale = pinchRef.current.startDist / d;
@@ -116,8 +116,8 @@ export function useThreeProstate(
       }
       if (e.touches.length === 1 && dragging.current && !pinchRef.current) {
         e.preventDefault();
-        const x = e.touches[0].clientX;
-        const y = e.touches[0].clientY;
+        const x = e.touches[0]!.clientX;
+        const y = e.touches[0]!.clientY;
         const dx = x - prevMouse.current.x;
         const dy = y - prevMouse.current.y;
         prevMouse.current = { x, y };
@@ -133,8 +133,8 @@ export function useThreeProstate(
         pinchRef.current = null;
         dragging.current = true;
         prevMouse.current = {
-          x: e.touches[0].clientX,
-          y: e.touches[0].clientY,
+          x: e.touches[0]!.clientX,
+          y: e.touches[0]!.clientY,
         };
       }
     };
