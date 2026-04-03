@@ -1,6 +1,8 @@
 import {
+  BookOpen,
   Info,
   Moon,
+  Printer,
   Redo2,
   Sun,
   Undo2,
@@ -8,12 +10,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { usePatientStore } from "@/store/patientStore";
 import { useUiStore } from "@/store/uiStore";
+import { printReport } from "@/lib/compass/printReport";
 import { cn } from "@/lib/utils";
 
 export function AppHeader() {
   const dark = useUiStore((s) => s.dark);
   const setDark = useUiStore((s) => s.setDark);
   const setInfoOpen = useUiStore((s) => s.setInfoOpen);
+  const setCaseLogOpen = useUiStore((s) => s.setCaseLogOpen);
   const patients = usePatientStore((s) => s.patients);
   const activeId = usePatientStore((s) => s.activeId);
   const setActive = usePatientStore((s) => s.setActive);
@@ -23,94 +27,119 @@ export function AppHeader() {
   const active = patients.find((p) => p.id === activeId);
 
   return (
-    <header
-      className={cn(
-        "z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/80 bg-card/95 px-3 shadow-sm backdrop-blur-md sm:gap-3 sm:px-4",
-        "supports-[backdrop-filter]:bg-card/80",
-      )}
-    >
-      <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-4">
-        <div className="flex items-baseline gap-1.5">
-          <span className="truncate text-sm font-bold tracking-tight text-foreground sm:text-base">
-            COMPASS
-          </span>
-          <span className="hidden text-xs font-medium text-muted-foreground sm:inline">
-            Prostate cancer · surgical outcomes
-          </span>
-        </div>
-
-        <div className="mt-0.5 flex min-w-0 items-center gap-2 sm:mt-0 sm:max-w-[min(100%,280px)]">
-          <label htmlFor="nav-patient" className="sr-only">
-            Active patient
-          </label>
-          <select
-            id="nav-patient"
-            className={cn(
-              "h-9 min-w-0 flex-1 cursor-pointer truncate rounded-lg border border-input bg-background px-2.5 text-xs font-medium shadow-sm",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm",
-            )}
-            value={activeId ?? ""}
-            onChange={(e) => setActive(e.target.value)}
-          >
-            {patients.length === 0 ? (
-              <option value="">No patients loaded</option>
-            ) : (
-              patients.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))
-            )}
-          </select>
-        </div>
+    <header className="z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-card/95 px-3 backdrop-blur-md sm:px-4 supports-[backdrop-filter]:bg-card/85">
+      {/* Brand */}
+      <div className="flex shrink-0 items-baseline gap-2">
+        <span className="text-sm font-black tracking-tight text-foreground sm:text-base">
+          COMPASS
+        </span>
+        <span className="hidden text-[10px] font-medium text-muted-foreground sm:inline">
+          Prostate cancer · surgical outcomes
+        </span>
       </div>
 
-      <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
-        <div className="flex items-center gap-0.5">
+      {/* Divider */}
+      <div className="hidden h-5 w-px shrink-0 bg-border/70 sm:block" />
+
+      {/* Patient selector */}
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-[260px]">
+        <label htmlFor="nav-patient" className="sr-only">Active patient</label>
+        <select
+          id="nav-patient"
+          className={cn(
+            "h-8 min-w-0 flex-1 cursor-pointer truncate rounded-lg border border-input/80 bg-muted/50 px-2.5 text-xs font-medium text-foreground shadow-none transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+            "hover:bg-muted/80 sm:text-sm",
+          )}
+          value={activeId ?? ""}
+          onChange={(e) => setActive(e.target.value)}
+        >
+          {patients.length === 0 ? (
+            <option value="">No patients loaded</option>
+          ) : (
+            patients.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))
+          )}
+        </select>
+      </div>
+
+      {/* Right actions */}
+      <div className="ml-auto flex shrink-0 items-center gap-0.5">
+        {/* Undo/Redo */}
+        <div className="flex items-center">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-9 w-9 shrink-0 text-muted-foreground"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
             aria-label="Undo"
             onClick={() => undo()}
           >
-            <Undo2 className="h-4 w-4" />
+            <Undo2 className="h-[15px] w-[15px]" />
           </Button>
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-9 w-9 shrink-0 text-muted-foreground"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
             aria-label="Redo"
             onClick={() => redo()}
           >
-            <Redo2 className="h-4 w-4" />
+            <Redo2 className="h-[15px] w-[15px]" />
           </Button>
         </div>
+
+        <div className="mx-1 h-4 w-px shrink-0 bg-border/60" />
+
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="h-9 w-9"
+          className="h-8 w-8"
           aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
           onClick={() => setDark(!dark)}
         >
           {dark ? (
-            <Sun className="h-4 w-4 text-amber-400" />
+            <Sun className="h-[15px] w-[15px] text-amber-400" />
           ) : (
-            <Moon className="h-4 w-4" />
+            <Moon className="h-[15px] w-[15px] text-muted-foreground" />
           )}
         </Button>
+
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="h-9 w-9"
+          className="h-8 w-8 text-emerald-500 hover:text-emerald-400"
+          aria-label="Prospective case log"
+          onClick={() => setCaseLogOpen(true)}
+        >
+          <BookOpen className="h-[15px] w-[15px]" />
+        </Button>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          aria-label="Print report"
+          onClick={() => printReport()}
+        >
+          <Printer className="h-[15px] w-[15px]" />
+        </Button>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-primary"
           aria-label="About COMPASS"
           onClick={() => setInfoOpen(true)}
         >
-          <Info className="h-4 w-4" />
+          <Info className="h-[15px] w-[15px]" />
         </Button>
       </div>
 

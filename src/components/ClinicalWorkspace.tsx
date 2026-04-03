@@ -86,7 +86,7 @@ function EntryGroup({
   children: ReactNode;
 }) {
   return (
-    <div className="space-y-4 rounded-xl border border-border/60 bg-gradient-to-b from-muted/40 to-muted/15 p-4 dark:from-muted/25 dark:to-muted/10">
+    <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
       <div className="space-y-1">
         <h4 className="text-[11px] font-semibold uppercase tracking-widest text-primary/90">
           {title}
@@ -183,8 +183,8 @@ export function ClinicalWorkspace({ className, compact }: ClinicalWorkspaceProps
         <PatientRoster />
       </section>
 
-      <Card className="overflow-hidden border-border/70 shadow-md shadow-black/[0.06] dark:shadow-none">
-        <CardHeader className="border-b border-border/50 bg-gradient-to-br from-muted/50 via-muted/25 to-transparent pb-4 dark:from-muted/30">
+      <Card className="overflow-hidden border-border ">
+        <CardHeader className="border-b border-border bg-muted/20 pb-4">
           <CardTitle className="text-base font-semibold tracking-tight text-foreground">
             Clinical inputs
           </CardTitle>
@@ -303,7 +303,7 @@ export function ClinicalWorkspace({ className, compact }: ClinicalWorkspaceProps
                 />
               </FormField>
               <div className="sm:col-span-2">
-                <div className="flex min-h-12 items-start gap-3 rounded-xl border border-border/70 bg-card px-4 py-3 shadow-sm">
+                <div className="flex min-h-12 items-start gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
                   <input
                     type="checkbox"
                     id="psma_ln"
@@ -325,11 +325,11 @@ export function ClinicalWorkspace({ className, compact }: ClinicalWorkspaceProps
               </div>
             </EntryGroup>
 
-            <div className="flex flex-col gap-3 border-t border-border/50 pt-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 border-t border-border pt-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-[11px] text-muted-foreground">
                 Changes are staged until you apply; undo from the header if needed.
               </p>
-              <Button type="submit" size="lg" className="min-h-11 w-full shrink-0 sm:w-auto">
+              <Button type="submit" size="sm" className="w-full shrink-0 sm:w-auto">
                 Apply &amp; recompute
               </Button>
             </div>
@@ -362,13 +362,14 @@ export function ClinicalWorkspace({ className, compact }: ClinicalWorkspaceProps
         </>
       )}
 
-      <Card className="border-border/70 shadow-md shadow-black/[0.06] dark:shadow-none">
-        <CardHeader className="border-b border-border/50 bg-gradient-to-br from-muted/50 via-muted/25 to-transparent pb-4 dark:from-muted/30">
+      <Card className="border-border ">
+        <CardHeader className="border-b border-border bg-muted/20 pb-4">
           <CardTitle className="text-base font-semibold tracking-tight text-foreground">
             Case file
           </CardTitle>
           <CardDescription>
-            Import or export the case as JSON, or reset to defaults.
+            Exchange <code className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">prostate-3d-input-v1</code>{" "}
+            JSON for backup or integration.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 pt-6">
@@ -405,8 +406,8 @@ export function ClinicalWorkspace({ className, compact }: ClinicalWorkspaceProps
             <Button
               type="button"
               variant="secondary"
-              size="lg"
-              className="min-h-11 w-full sm:w-auto"
+              size="sm"
+              className="w-full sm:w-auto"
               onClick={() => {
                 const blob = new Blob([exportActiveJson()], {
                   type: "application/json",
@@ -424,8 +425,8 @@ export function ClinicalWorkspace({ className, compact }: ClinicalWorkspaceProps
             <Button
               type="button"
               variant="outline"
-              size="lg"
-              className="min-h-11 w-full sm:w-auto"
+              size="sm"
+              className="w-full sm:w-auto"
               onClick={() => {
                 resetActiveToSeed();
               }}

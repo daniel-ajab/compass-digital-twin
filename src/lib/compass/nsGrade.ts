@@ -25,7 +25,14 @@ export function getNsGradeZoneAware(
   const sCores = side === "left" ? S.cores_left || 0 : S.cores_right || 0;
   const hasCA = sGG > 0;
 
-  const zw: Record<string, number> = {
+  type ZoneWeights = {
+    posterolateral: number;
+    base: number;
+    apex: number;
+    anterior: number;
+    bladder_neck: number;
+  };
+  const zw: ZoneWeights = {
     posterolateral: 0,
     base: 0,
     apex: 0,
@@ -52,11 +59,12 @@ export function getNsGradeZoneAware(
         w = Math.min(Math.max(w, ggB + pctB), 0.95);
       }
       if (w > 0.03) hasZD = true;
-      zw[a.zone] = Math.max(zw[a.zone] ?? 0, w);
+      const zwRec = zw as Record<string, number>;
+      zwRec[a.zone] = Math.max(zwRec[a.zone] ?? 0, w);
     }
   }
 
-  const re: Record<string, number> = {
+  const re: ZoneWeights = {
     posterolateral: 0,
     base: 0,
     apex: 0,
@@ -64,15 +72,14 @@ export function getNsGradeZoneAware(
     bladder_neck: 0,
   };
   const total =
-    zw.posterolateral +
-    zw.base +
-    zw.apex +
-    zw.anterior +
-    zw.bladder_neck;
+    zw.posterolateral + zw.base + zw.apex + zw.anterior + zw.bladder_neck;
   if (hasZD && total > 0) {
-    for (const k of Object.keys(re)) {
-      re[k] = modelECE * ((zw[k] ?? 0) / total);
-    }
+    const f = modelECE / total;
+    re.posterolateral = f * zw.posterolateral;
+    re.base = f * zw.base;
+    re.apex = f * zw.apex;
+    re.anterior = f * zw.anterior;
+    re.bladder_neck = f * zw.bladder_neck;
   } else if (hasCA && modelECE > 0.05) {
     re.posterolateral = modelECE * 0.35;
     re.base = modelECE * 0.3;

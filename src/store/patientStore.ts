@@ -12,7 +12,6 @@ import type { Prostate3DInputV1, ZoneMap } from "@/types/patient";
 import type { LesionRow } from "@/types/lesion";
 import type { CompassPredictions, ThreeZoneRuntime } from "@/types/prediction";
 import { emptyLesion } from "@/types/lesion";
-import { defaultClinicalState } from "@/types/patient";
 
 const STORAGE_KEY = "compass-digital-twin-state";
 const HISTORY_LIMIT = 40;

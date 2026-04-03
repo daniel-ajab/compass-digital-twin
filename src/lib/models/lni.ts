@@ -19,7 +19,7 @@ export function predictLni(S: ClinicalState): number {
   for (let k = 0; k < vals.length; k++) {
     const v = vals[k];
     const sk = LNI_PLND.s[k] ?? 0;
-    if (v !== null && !Number.isNaN(v) && sk > 0) {
+    if (v != null && !Number.isNaN(v) && sk > 0) {
       L +=
         (LNI_PLND.c[k] ?? 0) * ((v - (LNI_PLND.m[k] ?? 0)) / sk);
     }

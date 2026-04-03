@@ -36,7 +36,8 @@ export function ThreeCanvas() {
   return (
     <div
       ref={ref}
-      className="h-full min-h-[320px] w-full bg-[#1e1e24]"
+      className="h-full min-h-[320px] w-full"
+      style={{ background: "radial-gradient(ellipse at 50% 35%, #1a2540 0%, #0d1220 55%, #080b14 100%)" }}
       role="img"
       aria-label="3D prostate digital twin"
     />

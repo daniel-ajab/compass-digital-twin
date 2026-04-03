@@ -35,7 +35,7 @@ export function predictPsm(S: ClinicalState): number {
   for (let k = 0; k < vals.length; k++) {
     const v = vals[k];
     const sk = PSM.s[k] ?? 0;
-    if (v !== null && !Number.isNaN(v) && sk > 0) {
+    if (v != null && !Number.isNaN(v) && sk > 0) {
       L += (PSM.c[k] ?? 0) * ((v - (PSM.m[k] ?? 0)) / sk);
     }
   }

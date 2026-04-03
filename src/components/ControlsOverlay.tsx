@@ -1,4 +1,5 @@
-import { Minus, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, Minus, Plus } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { emitZoomNudge } from "@/lib/three/zoomBridge";
 import { useUiStore } from "@/store/uiStore";
@@ -6,39 +7,50 @@ import type { OverlayType } from "@/types/prediction";
 import { cn } from "@/lib/utils";
 
 const VIEWS = [
-  "anterior",
-  "posterior",
-  "base",
-  "apex",
-  "left",
-  "right",
+  { id: "anterior", label: "Ant" },
+  { id: "posterior", label: "Post" },
+  { id: "base", label: "Base" },
+  { id: "apex", label: "Apex" },
+  { id: "left", label: "Left" },
+  { id: "right", label: "Right" },
 ] as const;
 
-const OVERLAYS: { id: OverlayType; label: string; cls?: string }[] = [
-  { id: "cancer", label: "csPCa", cls: "border-red-500/50 text-red-400" },
-  { id: "ece", label: "ECE", cls: "border-amber-500/50 text-amber-400" },
-  { id: "svi", label: "SVI", cls: "border-purple-500/50 text-purple-400" },
-  { id: "psm", label: "PSM", cls: "border-sky-500/50 text-sky-400" },
+const OVERLAYS: { id: OverlayType; label: string; activeColor: string }[] = [
+  { id: "cancer", label: "csPCa", activeColor: "text-red-400 border-red-500/60 bg-red-500/10" },
+  { id: "ece", label: "ECE", activeColor: "text-amber-400 border-amber-500/60 bg-amber-500/10" },
+  { id: "svi", label: "SVI", activeColor: "text-purple-400 border-purple-500/60 bg-purple-500/10" },
+  { id: "psm", label: "PSM", activeColor: "text-sky-400 border-sky-500/60 bg-sky-500/10" },
 ];
 
-const LEGEND: Record<OverlayType, { title: string; gradient: string }> = {
+const LEGEND: Record<OverlayType, { title: string; gradient: string; low: string; high: string }> = {
   cancer: {
-    title: "csPCa risk (GG ≥ 2)",
+    title: "csPCa risk",
     gradient: "linear-gradient(to right,#22c55e,#eab308,#ef4444)",
+    low: "Low",
+    high: "High",
   },
   ece: {
     title: "ECE risk",
     gradient: "linear-gradient(to right,#22c55e,#f59e0b,#ef4444)",
+    low: "Low",
+    high: "High",
   },
   svi: {
     title: "SVI risk",
     gradient: "linear-gradient(to right,#4060a0,#a855f7,#ef4444)",
+    low: "Low",
+    high: "High",
   },
   psm: {
     title: "PSM risk",
     gradient: "linear-gradient(to right,#3080c0,#60a0e0,#ef4444)",
+    low: "Low",
+    high: "High",
   },
 };
+
+const pillBase =
+  "h-7 rounded-md border px-2.5 text-[11px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60";
 
 export function ControlsOverlay() {
   const overlay = useUiStore((s) => s.overlay);
@@ -52,97 +64,116 @@ export function ControlsOverlay() {
   const setView = useUiStore((s) => s.setView);
   const leg = LEGEND[overlay];
 
+  const [legendOpen, setLegendOpen] = useState(true);
+
   return (
     <>
-      <div className="pointer-events-auto absolute left-2 top-2 z-10 flex max-w-[min(100%,11rem)] flex-wrap gap-1 sm:max-w-[45%]">
-        {VIEWS.map((v) => (
-          <Button
-            key={v}
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="h-8 min-h-8 border border-border/80 bg-black/60 px-2 text-[10px] backdrop-blur sm:h-7 sm:min-h-7"
-            onClick={() => setView(v)}
-          >
-            {v[0].toUpperCase() + v.slice(1)}
-          </Button>
-        ))}
-      </div>
-      <div className="pointer-events-auto absolute right-2 top-2 z-10 flex max-w-[min(100%,14rem)] flex-wrap justify-end gap-1 sm:max-w-[53%]">
-        {OVERLAYS.map((o) => (
-          <Button
-            key={o.id}
-            type="button"
-            variant="secondary"
-            size="sm"
-            className={cn(
-              "h-8 min-h-8 border bg-black/60 px-2 text-[10px] backdrop-blur sm:h-7 sm:min-h-7",
-              overlay === o.id ? o.cls : "border-border/60 text-muted-foreground",
-            )}
-            onClick={() => setOverlay(o.id)}
-          >
-            {o.label}
-          </Button>
-        ))}
-        <div className="mx-0.5 self-stretch border-l border-border/50" aria-hidden />
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className={cn(
-            "h-8 min-h-8 border bg-black/60 px-2 text-[10px] backdrop-blur sm:h-7 sm:min-h-7",
-            heatmapVisible && "border-primary text-primary",
-          )}
-          onClick={() => toggleHeatmap()}
-        >
-          Heatmap
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className={cn(
-            "h-8 min-h-8 border bg-black/60 px-2 text-[10px] backdrop-blur sm:h-7 sm:min-h-7",
-            labelsVisible && "border-primary text-primary",
-          )}
-          onClick={() => toggleLabels()}
-        >
-          Labels
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className={cn(
-            "h-8 min-h-8 border bg-black/60 px-2 text-[10px] backdrop-blur sm:h-7 sm:min-h-7",
-            lesionsOnly && "border-primary text-primary",
-          )}
-          onClick={() => toggleLesionsOnly()}
-        >
-          Lesions only
-        </Button>
-      </div>
-      <div
-        className={cn(
-          "pointer-events-none absolute left-2 z-10 rounded-lg border border-border/60 bg-black/70 px-2.5 py-2 backdrop-blur sm:left-3 sm:px-3 lg:bottom-3",
-          "max-lg:bottom-[calc(0.75rem+7.5rem+env(safe-area-inset-bottom,0px))]",
-        )}
-      >
-        <div className="text-[11px] font-semibold text-primary">{leg.title}</div>
-        <div
-          className="mt-1 h-2 w-[140px] rounded"
-          style={{ background: leg.gradient }}
-        />
-        <div className="mt-0.5 flex w-[140px] justify-between text-[9px] text-muted-foreground">
-          <span>Low</span>
-          <span className="text-amber-400/80">Med</span>
-          <span className="text-red-400/80">High</span>
+      {/* ── Top-left: view buttons ── */}
+      <div className="pointer-events-auto absolute left-2 top-2 z-10 flex flex-wrap gap-1">
+        <div className="glass flex items-center gap-0.5 rounded-lg p-1">
+          {VIEWS.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setView(id)}
+              className="rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-all hover:bg-white/10 hover:text-foreground active:scale-95"
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
+      {/* ── Top-right: overlay + toggles ── */}
+      <div className="pointer-events-auto absolute right-2 top-2 z-10 flex flex-col items-end gap-1.5">
+        {/* Overlay type pills */}
+        <div className="glass flex items-center gap-0.5 rounded-lg p-1">
+          {OVERLAYS.map((o) => {
+            const active = overlay === o.id;
+            return (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => setOverlay(o.id)}
+                className={cn(
+                  pillBase,
+                  active
+                    ? o.activeColor
+                    : "border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/10",
+                )}
+              >
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Toggle pills */}
+        <div className="glass flex items-center gap-0.5 rounded-lg p-1">
+          {[
+            { label: "Heatmap", active: heatmapVisible, toggle: toggleHeatmap },
+            { label: "Labels", active: labelsVisible, toggle: toggleLabels },
+            { label: "Lesions", active: lesionsOnly, toggle: toggleLesionsOnly },
+          ].map(({ label, active, toggle }) => (
+            <button
+              key={label}
+              type="button"
+              onClick={toggle}
+              className={cn(
+                pillBase,
+                active
+                  ? "border-primary/60 bg-primary/15 text-primary"
+                  : "border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/10",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Bottom-left: legend (collapsible) ── */}
       <div
         className={cn(
-          "pointer-events-auto absolute right-2 z-20 flex flex-col gap-1 lg:hidden",
+          "pointer-events-auto absolute left-2 z-10 w-44 overflow-hidden rounded-lg transition-all lg:bottom-3",
+          "max-lg:bottom-[calc(0.75rem+7.5rem+env(safe-area-inset-bottom,0px))]",
+          "glass",
+        )}
+      >
+        <button
+          type="button"
+          className="flex w-full items-center justify-between px-3 py-2 text-[11px] font-semibold text-primary"
+          onClick={() => setLegendOpen((v) => !v)}
+        >
+          <span>{leg.title}</span>
+          {legendOpen ? (
+            <ChevronDown className="h-3 w-3 text-muted-foreground" />
+          ) : (
+            <ChevronUp className="h-3 w-3 text-muted-foreground" />
+          )}
+        </button>
+        {legendOpen && (
+          <div className="px-3 pb-3">
+            <div
+              className="h-2 w-full rounded-full"
+              style={{ background: leg.gradient }}
+            />
+            <div className="mt-1 flex justify-between text-[9px] text-muted-foreground">
+              <span>{leg.low}</span>
+              <span>Moderate</span>
+              <span>{leg.high}</span>
+            </div>
+            <p className="mt-1.5 text-[9px] leading-snug text-muted-foreground/80">
+              Green &lt;10% · Amber 10–30% · Red &gt;30%
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Bottom-right: zoom (mobile only) ── */}
+      <div
+        className={cn(
+          "pointer-events-auto absolute right-2 z-20 flex flex-col gap-1.5 lg:hidden",
           "bottom-[calc(0.5rem+4rem+env(safe-area-inset-bottom,0px))]",
         )}
         role="group"
@@ -152,24 +183,24 @@ export function ControlsOverlay() {
           type="button"
           variant="secondary"
           size="icon"
-          className="h-10 w-10 border border-border/80 bg-black/70 shadow-md backdrop-blur"
+          className="glass h-10 w-10 rounded-xl border-white/10 shadow-lg"
           aria-label="Zoom in"
           onClick={() => emitZoomNudge(-0.45)}
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4 text-foreground" />
         </Button>
         <Button
           type="button"
           variant="secondary"
           size="icon"
-          className="h-10 w-10 border border-border/80 bg-black/70 shadow-md backdrop-blur"
+          className="glass h-10 w-10 rounded-xl border-white/10 shadow-lg"
           aria-label="Zoom out"
           onClick={() => emitZoomNudge(0.45)}
         >
-          <Minus className="h-4 w-4" />
+          <Minus className="h-4 w-4 text-foreground" />
         </Button>
-        <p className="max-w-[4.5rem] text-center text-[8px] font-medium leading-tight text-muted-foreground">
-          Drag to rotate · pinch
+        <p className="text-center text-[8px] leading-tight text-muted-foreground/70">
+          Drag · pinch
         </p>
       </div>
     </>
