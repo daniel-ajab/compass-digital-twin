@@ -84,9 +84,14 @@ export function ControlsOverlay() {
         </div>
       </div>
 
-      {/* ── Top-right: overlay + toggles ── */}
-      <div className="pointer-events-auto absolute right-2 top-2 z-10 flex flex-col items-end gap-1.5">
-        {/* Overlay type pills */}
+      {/* ── Overlay type pills: top-right on desktop, bottom-left on mobile ── */}
+      <div
+        className={cn(
+          "pointer-events-auto absolute z-10",
+          "lg:right-2 lg:top-2",
+          "max-lg:left-2 max-lg:bottom-[calc(0.75rem+4rem+env(safe-area-inset-bottom,0px))]",
+        )}
+      >
         <div className="glass flex items-center gap-0.5 rounded-lg p-1">
           {OVERLAYS.map((o) => {
             const active = overlay === o.id;
@@ -107,8 +112,16 @@ export function ControlsOverlay() {
             );
           })}
         </div>
+      </div>
 
-        {/* Toggle pills */}
+      {/* ── Toggle pills: below overlay pills on desktop, bottom-right on mobile ── */}
+      <div
+        className={cn(
+          "pointer-events-auto absolute right-2 z-10",
+          "lg:top-[2.75rem]",
+          "max-lg:bottom-[calc(0.75rem+4rem+env(safe-area-inset-bottom,0px)+7.5rem)]",
+        )}
+      >
         <div className="glass flex items-center gap-0.5 rounded-lg p-1">
           {[
             { label: "Heatmap", active: heatmapVisible, toggle: toggleHeatmap },

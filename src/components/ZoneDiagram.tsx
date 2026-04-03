@@ -87,28 +87,7 @@ export function ZoneDiagram() {
   return (
     <Card className="border-border">
       <CardHeader className="border-b border-border bg-muted/20 pb-3 pt-4">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-sm font-semibold text-foreground">
-            Zone map
-          </CardTitle>
-          <div className="flex gap-0.5 rounded-lg border border-border/60 bg-muted/50 p-0.5">
-            {OVERLAY_TABS.map((o) => (
-              <button
-                key={o.id}
-                type="button"
-                onClick={() => setOverlay(o.id)}
-                className={cn(
-                  "rounded-md px-2 py-0.5 text-[10px] font-semibold transition-colors",
-                  overlay === o.id
-                    ? "bg-card text-primary shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <CardTitle className="text-sm font-semibold text-foreground">Zone map</CardTitle>
       </CardHeader>
 
       <CardContent className="space-y-4 pt-4">
@@ -172,11 +151,30 @@ export function ZoneDiagram() {
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center justify-end gap-3 border-t border-border/40 pt-2 text-[9px] text-muted-foreground">
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-500/30 border border-emerald-500/50" />Low</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-amber-500/20 border border-amber-500/50" />Moderate</span>
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-red-500/20 border border-red-500/50" />High</span>
+        {/* Legend + overlay tabs */}
+        <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-2">
+          <div className="flex items-center gap-3 text-[9px] text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm border border-emerald-500/50 bg-emerald-500/30" />Low</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm border border-amber-500/50 bg-amber-500/20" />Moderate</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm border border-red-500/50 bg-red-500/20" />High</span>
+          </div>
+          <div className="flex gap-0.5 rounded-lg border border-border/60 bg-muted/50 p-0.5">
+            {OVERLAY_TABS.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => setOverlay(o.id)}
+                className={cn(
+                  "rounded-md px-2 py-0.5 text-[10px] font-semibold transition-colors",
+                  overlay === o.id
+                    ? "bg-card text-primary shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
         </div>
       </CardContent>
     </Card>
