@@ -41,7 +41,7 @@ export function predictBcrPreop(S: ClinicalState): number {
   for (let k = 0; k < vals.length; k++) {
     const v = vals[k];
     const sk = s[k] ?? 0;
-    if (v !== null && !Number.isNaN(v) && sk > 0) {
+    if (v != null && !Number.isNaN(v) && sk > 0) {
       L += (c[k] ?? 0) * ((v - (m[k] ?? 0)) / sk);
     }
   }

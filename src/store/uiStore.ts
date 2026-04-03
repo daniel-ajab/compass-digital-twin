@@ -11,6 +11,7 @@ interface UiState {
   labelsVisible: boolean;
   lesionsOnly: boolean;
   infoOpen: boolean;
+  caseLogOpen: boolean;
   explainKey: string | null;
   targetRot: { x: number; y: number };
   /** Below lg breakpoint: which full-screen panel is shown */
@@ -21,6 +22,7 @@ interface UiState {
   toggleLabels: () => void;
   toggleLesionsOnly: () => void;
   setInfoOpen: (v: boolean) => void;
+  setCaseLogOpen: (v: boolean) => void;
   setExplainKey: (k: string | null) => void;
   setView: (name: keyof typeof VIEWS) => void;
   setMobileWorkspace: (w: MobileWorkspace) => void;
@@ -33,6 +35,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   labelsVisible: true,
   lesionsOnly: false,
   infoOpen: false,
+  caseLogOpen: false,
   explainKey: null,
   targetRot: { x: 0, y: 0 },
   mobileWorkspace: "clinical",
@@ -45,6 +48,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   toggleLabels: () => set({ labelsVisible: !get().labelsVisible }),
   toggleLesionsOnly: () => set({ lesionsOnly: !get().lesionsOnly }),
   setInfoOpen: (v) => set({ infoOpen: v }),
+  setCaseLogOpen: (v) => set({ caseLogOpen: v }),
   setExplainKey: (k) => set({ explainKey: k }),
   setView: (name) => {
     const v = VIEWS[name];

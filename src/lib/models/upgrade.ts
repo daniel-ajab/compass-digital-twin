@@ -39,7 +39,7 @@ export function predictUpgrade(S: ClinicalState): number {
   for (let k = 0; k < vals.length; k++) {
     const v = vals[k];
     const sk = UPGRADE.s[k] ?? 0;
-    if (v !== null && !Number.isNaN(v) && sk > 0) {
+    if (v != null && !Number.isNaN(v) && sk > 0) {
       L += (UPGRADE.c[k] ?? 0) * ((v - (UPGRADE.m[k] ?? 0)) / sk);
     }
   }

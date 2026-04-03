@@ -35,7 +35,6 @@ function lesionToZones(les: LesionMapInput): CompassZoneKey[] {
   const isAnt = ps === "Anterior";
   const isLat = ps === "Posterolateral" || ps === "Lateral";
   const isMed = ps === "Medial";
-  const isGeneric = ps === "" || ps === "Posterior";
   if (les.source === "MRI") return [lesionToZone(les)];
   if (isAnt) return [lesionToZone(les)];
   if (lv === "Apex") return [s === "L" ? "5p" : "10p"];
@@ -89,7 +88,7 @@ export function mapLesionsToZones(
   }
 
   for (const row of lesions) {
-    if (!row.side || row.side === "") continue;
+    if (!row.side) continue;
     const les: LesionMapInput = {
       side: row.side,
       level: row.level || "Mid",
@@ -194,7 +193,7 @@ export function mapLesionsToZones(
         ? ["3p", "4p", "1p", "2p", "5p"]
         : ["8p", "9p", "6p", "7p", "10p"];
     for (let i = 0; i < priority.length && i < nZones; i++) {
-      const zk = priority[i];
+      const zk = priority[i]!;
       const cell = zones[zk];
       if (!cell) continue;
       cell.hasData = true;

@@ -185,12 +185,12 @@ function createProstateMesh(
   medianLobeGrade: number,
 ): Mesh {
   const geo = new SphereGeometry(1, 96, 96);
-  const pos = geo.attributes.position.array as Float32Array;
+  const pos = geo.attributes.position!.array as Float32Array;
   const col = new Float32Array(pos.length);
   for (let i = 0; i < pos.length; i += 3) {
-    const ox = pos[i];
-    const oy = pos[i + 1];
-    const oz = pos[i + 2];
+    const ox = pos[i]!;
+    const oy = pos[i + 1]!;
+    const oz = pos[i + 2]!;
     let { x, y, z } = transformToProstate(ox, oy, oz, 0, dims, medianLobeGrade);
     const er = getECERiskAtPoint(ox, oy, oz, zones);
     if (er > 0.1) {
@@ -521,7 +521,7 @@ export function createProstateScene(
 
   function buildZones(z: ThreeZoneRuntime[], ov: OverlayType) {
     while (heatmapGroup.children.length) {
-      const ch = heatmapGroup.children[0];
+      const ch = heatmapGroup.children[0]!;
       heatmapGroup.remove(ch);
       if (ch instanceof Mesh) {
         ch.geometry.dispose();
@@ -529,7 +529,7 @@ export function createProstateScene(
       }
     }
     while (boundaryGroup.children.length) {
-      const ch = boundaryGroup.children[0];
+      const ch = boundaryGroup.children[0]!;
       boundaryGroup.remove(ch);
       if (ch instanceof LineSegments) {
         ch.geometry.dispose();

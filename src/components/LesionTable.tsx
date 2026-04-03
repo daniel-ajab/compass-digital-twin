@@ -41,8 +41,8 @@ export function LesionTable() {
   const rows = entry.lesionRows;
 
   return (
-    <Card className="border-border/70">
-      <CardHeader className="border-b border-border/50 bg-gradient-to-br from-muted/40 to-transparent pb-3 dark:from-muted/25">
+    <Card className="border-border">
+      <CardHeader className="border-b border-border bg-muted/20 pb-3">
         <CardTitle className="text-sm font-semibold text-foreground">Lesions</CardTitle>
         <p className="text-xs text-muted-foreground">
           Scroll horizontally on small screens. Edits apply immediately.
