@@ -33,8 +33,8 @@ export function AppHeader() {
         <span className="text-sm font-black tracking-tight text-foreground sm:text-base">
           COMPASS
         </span>
-        <span className="hidden text-[10px] font-semibold uppercase tracking-widest text-primary/80 sm:inline">
-          Digital Twin
+        <span className="hidden text-[10px] font-medium text-muted-foreground sm:inline">
+          Prostate cancer · surgical outcomes
         </span>
       </div>
 

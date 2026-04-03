@@ -378,6 +378,12 @@ export function PredictionPanel() {
                         <div className={cn("mt-0.5 text-xl font-black tabular-nums", riskCls(p.v))}>
                           {Math.round(p.v * 100)}%
                         </div>
+                        <div className="mx-1 mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className={cn("h-full rounded-full transition-all duration-500", riskBarCls(p.v))}
+                            style={{ width: `${Math.min(100, p.v * 100)}%` }}
+                          />
+                        </div>
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="max-w-[200px] text-[11px]">
@@ -385,31 +391,6 @@ export function PredictionPanel() {
                     </TooltipContent>
                   </Tooltip>
                 ))}
-              </div>
-
-              {/* Horizontal bar chart */}
-              <div className="rounded-lg border border-border bg-muted/20 p-3.5">
-                <div className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Outcome profile
-                </div>
-                <div className="space-y-2.5">
-                  {preds.map((p) => (
-                    <div key={p.k} className="flex items-center gap-3">
-                      <span className="w-[4.5rem] shrink-0 text-[11px] font-medium text-muted-foreground">
-                        {p.k}
-                      </span>
-                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className={cn("h-full rounded-full transition-all duration-500", riskBarCls(p.v))}
-                          style={{ width: `${Math.min(100, p.v * 100)}%` }}
-                        />
-                      </div>
-                      <span className={cn("w-9 shrink-0 text-right text-[12px] font-bold tabular-nums", riskCls(p.v))}>
-                        {Math.round(p.v * 100)}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
               </div>
 
               {/* Side-specific ECE + Focal/Extensive */}
