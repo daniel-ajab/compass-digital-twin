@@ -84,7 +84,7 @@ export function ControlsOverlay() {
             {o.label}
           </Button>
         ))}
-        <span className="mx-1 flex items-center text-border">|</span>
+        <div className="mx-0.5 self-stretch border-l border-border/50" aria-hidden />
         <Button
           type="button"
           variant="secondary"
@@ -135,12 +135,9 @@ export function ControlsOverlay() {
         />
         <div className="mt-0.5 flex w-[140px] justify-between text-[9px] text-muted-foreground">
           <span>Low</span>
-          <span>High</span>
+          <span className="text-amber-400/80">Med</span>
+          <span className="text-red-400/80">High</span>
         </div>
-        <p className="mt-2 max-w-[200px] text-[9px] leading-snug text-muted-foreground">
-          Non-linear clinical scale: green &lt;10%, yellow 10–30%, red &gt;30%
-          estimated probability for the selected overlay.
-        </p>
       </div>
 
       <div

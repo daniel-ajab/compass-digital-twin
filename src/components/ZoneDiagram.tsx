@@ -1,14 +1,21 @@
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { COMPASS_TO_3D } from "@/lib/compass/constants";
 import { usePatientStore } from "@/store/patientStore";
 import { useUiStore } from "@/store/uiStore";
+import type { OverlayType } from "@/types/prediction";
 import { cn } from "@/lib/utils";
+
+const OVERLAY_TABS: { id: OverlayType; label: string }[] = [
+  { id: "cancer", label: "csPCa" },
+  { id: "ece", label: "ECE" },
+  { id: "svi", label: "SVI" },
+  { id: "psm", label: "PSM" },
+];
 
 function zVal(
   zoneId: string,
@@ -43,18 +50,11 @@ export function ZoneDiagram() {
   const activeId = usePatientStore((s) => s.activeId);
   const threeZones = usePatientStore((s) => s.threeZones);
   const overlay = useUiStore((s) => s.overlay);
+  const setOverlay = useUiStore((s) => s.setOverlay);
   const entry = patients.find((p) => p.id === activeId);
   if (!entry) return null;
 
   const zones = entry.record.zones;
-  const label =
-    overlay === "cancer"
-      ? "Cancer"
-      : overlay === "ece"
-        ? "ECE"
-        : overlay === "svi"
-          ? "SVI"
-          : "PSM";
 
   const box = (id: string, short: string) => {
     const v = zVal(id, overlay, zones, threeZones);
@@ -80,12 +80,28 @@ export function ZoneDiagram() {
   return (
     <Card className="border-border/70">
       <CardHeader className="border-b border-border/50 bg-gradient-to-br from-muted/40 to-transparent pb-3 dark:from-muted/25">
-        <CardTitle className="text-sm font-semibold text-foreground">
-          Zone map — {label}
-        </CardTitle>
-        <CardDescription>
-          Matches the overlay selected in the 3D viewer (csPCa, ECE, SVI, PSM).
-        </CardDescription>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-sm font-semibold text-foreground">
+            Zone map
+          </CardTitle>
+          <div className="flex gap-0.5 rounded-lg border border-border/60 bg-muted/50 p-0.5">
+            {OVERLAY_TABS.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => setOverlay(o.id)}
+                className={cn(
+                  "rounded-md px-2 py-0.5 text-[10px] font-semibold transition-colors",
+                  overlay === o.id
+                    ? "bg-card text-primary shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3 pt-4 text-[10px]">
         <div>

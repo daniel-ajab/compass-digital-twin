@@ -183,27 +183,6 @@ export function ClinicalWorkspace({ className, compact }: ClinicalWorkspaceProps
         <PatientRoster />
       </section>
 
-      <section aria-labelledby="predictions-heading">
-        <h2 id="predictions-heading" className="sr-only">
-          Model predictions
-        </h2>
-        <PredictionPanel />
-      </section>
-
-      <section aria-labelledby="lesions-heading">
-        <h2 id="lesions-heading" className="sr-only">
-          Lesion table
-        </h2>
-        <LesionTable />
-      </section>
-
-      <section aria-labelledby="zones-heading">
-        <h2 id="zones-heading" className="sr-only">
-          Zone diagram
-        </h2>
-        <ZoneDiagram />
-      </section>
-
       <Card className="overflow-hidden border-border/70 shadow-md shadow-black/[0.06] dark:shadow-none">
         <CardHeader className="border-b border-border/50 bg-gradient-to-br from-muted/50 via-muted/25 to-transparent pb-4 dark:from-muted/30">
           <CardTitle className="text-base font-semibold tracking-tight text-foreground">
@@ -358,14 +337,38 @@ export function ClinicalWorkspace({ className, compact }: ClinicalWorkspaceProps
         </CardContent>
       </Card>
 
+      <section aria-labelledby="lesions-heading">
+        <h2 id="lesions-heading" className="sr-only">
+          Lesion table
+        </h2>
+        <LesionTable />
+      </section>
+
+      {!compact && (
+        <>
+          <section aria-labelledby="predictions-heading">
+            <h2 id="predictions-heading" className="sr-only">
+              Model predictions
+            </h2>
+            <PredictionPanel />
+          </section>
+
+          <section aria-labelledby="zones-heading">
+            <h2 id="zones-heading" className="sr-only">
+              Zone diagram
+            </h2>
+            <ZoneDiagram />
+          </section>
+        </>
+      )}
+
       <Card className="border-border/70 shadow-md shadow-black/[0.06] dark:shadow-none">
         <CardHeader className="border-b border-border/50 bg-gradient-to-br from-muted/50 via-muted/25 to-transparent pb-4 dark:from-muted/30">
           <CardTitle className="text-base font-semibold tracking-tight text-foreground">
             Case file
           </CardTitle>
           <CardDescription>
-            Exchange <code className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">prostate-3d-input-v1</code>{" "}
-            JSON for backup or integration.
+            Import or export the case as JSON, or reset to defaults.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 pt-6">

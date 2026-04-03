@@ -112,6 +112,19 @@ export function PredictionPanel() {
                     >
                       {Math.round(p.v * 100)}%
                     </div>
+                    <div className="mx-1 mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all",
+                          p.v < 0.15
+                            ? "bg-emerald-500"
+                            : p.v < 0.3
+                              ? "bg-amber-500"
+                              : "bg-red-500",
+                        )}
+                        style={{ width: `${Math.min(100, p.v * 100)}%` }}
+                      />
+                    </div>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-[220px]">
@@ -119,36 +132,6 @@ export function PredictionPanel() {
                 </TooltipContent>
               </Tooltip>
             ))}
-          </div>
-
-          {/* Risk breakdown mini visualization */}
-          <div className="rounded-md border border-border/80 bg-muted/20 p-3">
-            <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Outcome profile
-            </div>
-            <div className="space-y-2">
-              {preds.map((p) => (
-                <div key={p.k} className="flex items-center gap-2 text-[11px]">
-                  <span className="w-8 shrink-0 text-muted-foreground">{p.k}</span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={cn(
-                        "h-full rounded-full transition-all",
-                        p.v < 0.15
-                          ? "bg-emerald-500"
-                          : p.v < 0.3
-                            ? "bg-amber-500"
-                            : "bg-red-500",
-                      )}
-                      style={{ width: `${Math.min(100, p.v * 100)}%` }}
-                    />
-                  </div>
-                  <span className="w-10 shrink-0 tabular-nums text-right font-medium">
-                    {Math.round(p.v * 100)}%
-                  </span>
-                </div>
-              ))}
-            </div>
           </div>
 
           <div>

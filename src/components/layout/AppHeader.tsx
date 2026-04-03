@@ -30,12 +30,12 @@ export function AppHeader() {
       )}
     >
       <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-4">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-baseline gap-1.5">
           <span className="truncate text-sm font-bold tracking-tight text-foreground sm:text-base">
             COMPASS
           </span>
           <span className="hidden text-xs font-medium text-muted-foreground sm:inline">
-            Digital Twin
+            Prostate cancer · surgical outcomes
           </span>
         </div>
 
