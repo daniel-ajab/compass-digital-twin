@@ -2,7 +2,14 @@ import { ChevronDown, ChevronUp, Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { emitZoomNudge } from "@/lib/three/zoomBridge";
+import { usePatientStore } from "@/store/patientStore";
 import { useUiStore } from "@/store/uiStore";
+import {
+  deriveClinicalFromLesions,
+  lesionsFromRows,
+} from "@/lib/utils/normalization";
+import { clinicalStateFromRecord } from "@/lib/compass/clinicalFromRecord";
+import { printReport } from "@/lib/printReport";
 import type { OverlayType } from "@/types/prediction";
 import { cn } from "@/lib/utils";
 
@@ -62,9 +69,25 @@ export function ControlsOverlay() {
   const toggleLabels = useUiStore((s) => s.toggleLabels);
   const toggleLesionsOnly = useUiStore((s) => s.toggleLesionsOnly);
   const setView = useUiStore((s) => s.setView);
+  const setCaseLogOpen = useUiStore((s) => s.setCaseLogOpen);
   const leg = LEGEND[overlay];
 
+  const predictions = usePatientStore((s) => s.predictions);
+  const patients = usePatientStore((s) => s.patients);
+  const activeId = usePatientStore((s) => s.activeId);
+  const entry = patients.find((p) => p.id === activeId);
+
   const [legendOpen, setLegendOpen] = useState(true);
+
+  function handlePrint() {
+    if (!entry || !predictions) return;
+    const record = { ...entry.record, lesions: entry.lesionRows };
+    const S = deriveClinicalFromLesions(
+      clinicalStateFromRecord(record),
+      lesionsFromRows(entry.lesionRows),
+    );
+    printReport(S, predictions, entry.lesionRows);
+  }
 
   return (
     <>
@@ -122,26 +145,51 @@ export function ControlsOverlay() {
           "max-lg:bottom-[calc(0.75rem+4rem+env(safe-area-inset-bottom,0px)+7.5rem)]",
         )}
       >
-        <div className="glass flex items-center gap-0.5 rounded-lg p-1">
-          {[
-            { label: "Heatmap", active: heatmapVisible, toggle: toggleHeatmap },
-            { label: "Labels", active: labelsVisible, toggle: toggleLabels },
-            { label: "Lesions", active: lesionsOnly, toggle: toggleLesionsOnly },
-          ].map(({ label, active, toggle }) => (
+        <div className="glass flex flex-col gap-1 rounded-lg p-1">
+          <div className="flex items-center gap-0.5">
+            {[
+              { label: "Heatmap", active: heatmapVisible, toggle: toggleHeatmap },
+              { label: "Labels", active: labelsVisible, toggle: toggleLabels },
+              { label: "Lesions", active: lesionsOnly, toggle: toggleLesionsOnly },
+            ].map(({ label, active, toggle }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={toggle}
+                className={cn(
+                  pillBase,
+                  active
+                    ? "border-primary/60 bg-primary/15 text-primary"
+                    : "border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/10",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-0.5">
             <button
-              key={label}
               type="button"
-              onClick={toggle}
+              onClick={handlePrint}
+              disabled={!entry || !predictions}
               className={cn(
                 pillBase,
-                active
-                  ? "border-primary/60 bg-primary/15 text-primary"
-                  : "border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/10",
+                "border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed",
               )}
             >
-              {label}
+              Print
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setCaseLogOpen(true)}
+              className={cn(
+                pillBase,
+                "border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10",
+              )}
+            >
+              Cases
+            </button>
+          </div>
         </div>
       </div>
 
