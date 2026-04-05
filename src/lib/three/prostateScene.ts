@@ -676,12 +676,13 @@ export function createProstateScene(
       const urethraNode = gltf.scene.getObjectByName("Urethra");
       if (urethraNode) urethraNode.visible = false;
 
-      // Swap procedural mesh for the GLB anatomy; hide procedural sv/vd/urethra.
+      // Swap procedural mesh for the GLB anatomy.
+      // GLB has SV + ampulla but no full vas deferens tube — keep procedural vd.
+      // Hide procedural sv and prostateMesh (replaced by GLB equivalents).
       model.remove(prostateMesh);
       prostateMesh.geometry.dispose();
       (prostateMesh.material as Material).dispose();
       sv.visible = false;
-      vd.visible = false;
       urethra.visible = false;
 
       model.add(gltf.scene);
