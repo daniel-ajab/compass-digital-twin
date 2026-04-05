@@ -638,18 +638,50 @@ export function createProstateScene(
       gltf.scene.scale.set(1, 1, 1);
       gltf.scene.position.set(0, 0, 0);
 
-      // Hide non-Prostate structures.
-      for (const name of ["Urethra", "Seminal_R", "Seminal_L", "Ampulla_01"]) {
+      // Apply the same linear axis-correction + scale to the GLB's own SV/VD
+      // meshes so they sit at the correct position relative to the remapped
+      // prostate.  Unlike the prostate we use a straight linear transform
+      // (not transformToProstate) so their shape is preserved.
+      //   baked X=TR → new X  (scale dims.tr / halfX)
+      //   baked Z=−CC → new Y  (scale dims.cc / halfZ, negate)
+      //   baked Y=AP  → new Z  (scale dims.ap / halfY)
+      const halfX = prostateSize.x / 2;
+      const halfY = prostateSize.y / 2;
+      const halfZ = prostateSize.z / 2;
+      const linSX = dims.tr / halfX;
+      const linSY = dims.cc / halfZ;
+      const linSZ = dims.ap / halfY;
+
+      for (const name of ["Seminal_R", "Seminal_L", "Ampulla_01"]) {
         const node = gltf.scene.getObjectByName(name);
-        if (node) node.visible = false;
+        if (!node) continue;
+        node.traverse((child) => {
+          if (!(child instanceof Mesh) || !child.geometry) return;
+          const pos = child.geometry.attributes.position;
+          const arr = new Float32Array(pos.count * 3);
+          for (let i = 0; i < pos.count; i++) {
+            const bx = pos.getX(i) - prostateCenter.x;
+            const by = pos.getY(i) - prostateCenter.y;
+            const bz = pos.getZ(i) - prostateCenter.z;
+            arr[i * 3]     =  bx * linSX;
+            arr[i * 3 + 1] = -bz * linSY;
+            arr[i * 3 + 2] =  by * linSZ;
+          }
+          child.geometry.setAttribute("position", new Float32BufferAttribute(arr, 3));
+          child.geometry.computeVertexNormals();
+        });
       }
 
-      // Swap procedural mesh for the remapped GLB anatomy.
-      // Keep procedural sv/vd visible — they are correctly positioned
-      // relative to dims and serve as the SV/vas deferens guides.
+      // Hide only the urethra; show GLB SV and VD.
+      const urethraNode = gltf.scene.getObjectByName("Urethra");
+      if (urethraNode) urethraNode.visible = false;
+
+      // Swap procedural mesh for the GLB anatomy; hide procedural sv/vd/urethra.
       model.remove(prostateMesh);
       prostateMesh.geometry.dispose();
       (prostateMesh.material as Material).dispose();
+      sv.visible = false;
+      vd.visible = false;
       urethra.visible = false;
 
       model.add(gltf.scene);
