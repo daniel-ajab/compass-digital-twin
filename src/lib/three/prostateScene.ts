@@ -645,11 +645,11 @@ export function createProstateScene(
       }
 
       // Swap procedural mesh for the remapped GLB anatomy.
+      // Keep procedural sv/vd visible — they are correctly positioned
+      // relative to dims and serve as the SV/vas deferens guides.
       model.remove(prostateMesh);
       prostateMesh.geometry.dispose();
       (prostateMesh.material as Material).dispose();
-      sv.visible = false;
-      vd.visible = false;
       urethra.visible = false;
 
       model.add(gltf.scene);
