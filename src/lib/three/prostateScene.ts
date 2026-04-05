@@ -664,7 +664,7 @@ export function createProstateScene(
             const by = pos.getY(i) - prostateCenter.y;
             const bz = pos.getZ(i) - prostateCenter.z;
             arr[i * 3]     =  bx * linSX;
-            arr[i * 3 + 1] = -bz * linSY;
+            arr[i * 3 + 1] =  bz * linSY;   // positive: SV sits at base (top)
             arr[i * 3 + 2] =  by * linSZ;
           }
           child.geometry.setAttribute("position", new Float32BufferAttribute(arr, 3));
@@ -683,6 +683,7 @@ export function createProstateScene(
       prostateMesh.geometry.dispose();
       (prostateMesh.material as Material).dispose();
       sv.visible = false;
+      vd.visible = false;   // procedural VD tubes look like ureters — hidden
       urethra.visible = false;
 
       model.add(gltf.scene);
