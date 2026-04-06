@@ -107,7 +107,7 @@ export function ControlsOverlay() {
         </div>
       </div>
 
-      {/* ── Overlay type pills: top-right on desktop, bottom-left on mobile ── */}
+      {/* ── Top-right: overlay pills + toggles + print/cases (all in one flex-wrap row, matching HTML) ── */}
       <div
         className={cn(
           "pointer-events-auto absolute z-10",
@@ -115,7 +115,7 @@ export function ControlsOverlay() {
           "max-lg:left-2 max-lg:bottom-[calc(0.75rem+4rem+env(safe-area-inset-bottom,0px))]",
         )}
       >
-        <div className="glass flex items-center gap-0.5 rounded-lg p-1">
+        <div className="glass flex flex-wrap items-center justify-end gap-0.5 rounded-lg p-1" style={{ maxWidth: "53vw" }}>
           {OVERLAYS.map((o) => {
             const active = overlay === o.id;
             return (
@@ -134,62 +134,46 @@ export function ControlsOverlay() {
               </button>
             );
           })}
-        </div>
-      </div>
-
-      {/* ── Toggle pills: below overlay pills on desktop, bottom-right on mobile ── */}
-      <div
-        className={cn(
-          "pointer-events-auto absolute right-2 z-10",
-          "lg:top-[2.75rem]",
-          "max-lg:bottom-[calc(0.75rem+4rem+env(safe-area-inset-bottom,0px)+7.5rem)]",
-        )}
-      >
-        <div className="glass flex flex-col gap-1 rounded-lg p-1">
-          <div className="flex items-center gap-0.5">
-            {[
-              { label: "Heatmap", active: heatmapVisible, toggle: toggleHeatmap },
-              { label: "Labels", active: labelsVisible, toggle: toggleLabels },
-              { label: "Lesions", active: lesionsOnly, toggle: toggleLesionsOnly },
-            ].map(({ label, active, toggle }) => (
-              <button
-                key={label}
-                type="button"
-                onClick={toggle}
-                className={cn(
-                  pillBase,
-                  active
-                    ? "border-primary/60 bg-primary/15 text-primary"
-                    : "border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/10",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-0.5">
+          {[
+            { label: "Heatmap", active: heatmapVisible, toggle: toggleHeatmap },
+            { label: "Labels", active: labelsVisible, toggle: toggleLabels },
+            { label: "Lesions", active: lesionsOnly, toggle: toggleLesionsOnly },
+          ].map(({ label, active, toggle }) => (
             <button
+              key={label}
               type="button"
-              onClick={handlePrint}
-              disabled={!entry || !predictions}
+              onClick={toggle}
               className={cn(
                 pillBase,
-                "border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed",
+                active
+                  ? "border-primary/60 bg-primary/15 text-primary"
+                  : "border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/10",
               )}
             >
-              Print
+              {label}
             </button>
-            <button
-              type="button"
-              onClick={() => setCaseLogOpen(true)}
-              className={cn(
-                pillBase,
-                "border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10",
-              )}
-            >
-              Cases
-            </button>
-          </div>
+          ))}
+          <button
+            type="button"
+            onClick={handlePrint}
+            disabled={!entry || !predictions}
+            className={cn(
+              pillBase,
+              "border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed",
+            )}
+          >
+            Print
+          </button>
+          <button
+            type="button"
+            onClick={() => setCaseLogOpen(true)}
+            className={cn(
+              pillBase,
+              "border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10",
+            )}
+          >
+            Cases
+          </button>
         </div>
       </div>
 

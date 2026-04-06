@@ -322,6 +322,17 @@ export function ClinicalWorkspace({ className, compact }: ClinicalWorkspaceProps
         <PatientRoster />
       </section>
 
+      {!compact && (
+        <>
+          <section aria-labelledby="predictions-heading">
+            <h2 id="predictions-heading" className="sr-only">
+              Model predictions
+            </h2>
+            <PredictionPanel />
+          </section>
+        </>
+      )}
+
       <Card className="overflow-hidden border-border">
         <CardHeader className="border-b border-border bg-muted/20 pb-4">
           <CardTitle className="text-base font-semibold tracking-tight text-foreground">
@@ -892,21 +903,12 @@ export function ClinicalWorkspace({ className, compact }: ClinicalWorkspaceProps
       </section>
 
       {!compact && (
-        <>
-          <section aria-labelledby="predictions-heading">
-            <h2 id="predictions-heading" className="sr-only">
-              Model predictions
-            </h2>
-            <PredictionPanel />
-          </section>
-
-          <section aria-labelledby="zones-heading">
-            <h2 id="zones-heading" className="sr-only">
-              Zone diagram
-            </h2>
-            <ZoneDiagram />
-          </section>
-        </>
+        <section aria-labelledby="zones-heading">
+          <h2 id="zones-heading" className="sr-only">
+            Zone diagram
+          </h2>
+          <ZoneDiagram />
+        </section>
       )}
 
       <Card className="border-border">
