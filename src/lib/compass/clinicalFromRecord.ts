@@ -182,6 +182,9 @@ export function clinicalStateFromRecord(
   if (st.epe_mus) S.mus_ece = 1;
   if (st.svi_mus) S.mus_svi = 1;
   if (st.psma_epe) S.psma_epe = 1;
+  if (st.psma_svi) S.psma_svi = 1;
+  if (st.max_primus !== null && st.max_primus !== undefined)
+    S.primus = Math.max(S.primus, st.max_primus);
 
   for (const l of P.lesions || []) {
     if ((l.source === "ExactVu" || l.source === "MUS") && l.epe) S.mus_ece = 1;

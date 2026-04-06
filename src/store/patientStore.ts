@@ -236,21 +236,55 @@ export const usePatientStore = create<PatientState>()((set, get) => ({
       const p = patients.find((x) => x.id === activeId);
       if (!p) return;
       const record = clone(p.record);
+      // ── Patient demographics ──────────────────────────────────────────────
       if (patch.psa !== undefined) record.patient.psa = patch.psa;
+      if (patch.age !== undefined) record.patient.age = patch.age;
+      if (patch.bmi !== undefined) record.patient.bmi = patch.bmi;
+      if (patch.shim !== undefined) record.patient.shim = patch.shim;
+      if (patch.ipss !== undefined) record.patient.ipss = patch.ipss;
+      // ── Prostate anatomy ─────────────────────────────────────────────────
       if (patch.vol !== undefined) record.prostate.volume_cc = patch.vol;
+      // ── Biopsy ───────────────────────────────────────────────────────────
       if (patch.gg !== undefined) record.biopsy.max_grade_group = patch.gg;
       if (patch.cores !== undefined)
         record.biopsy.total_positive_cores = patch.cores;
       if (patch.maxcore !== undefined)
         record.biopsy.max_core_involvement_pct = patch.maxcore;
+      if (patch.linear_mm !== undefined)
+        record.biopsy.max_linear_extent_mm = patch.linear_mm;
+      if (patch.pct45 !== undefined)
+        record.biopsy.max_pct_pattern45 = patch.pct45;
+      if (patch.cribriform_bx !== undefined)
+        record.biopsy.has_cribriform = patch.cribriform_bx;
+      if (patch.idc_bx !== undefined)
+        record.biopsy.has_idc = patch.idc_bx;
+      if (patch.pni_bx !== undefined)
+        record.biopsy.has_pni = patch.pni_bx;
+      if (patch.laterality !== undefined)
+        record.biopsy.laterality = patch.laterality;
+      if (patch.gg_left !== undefined) record.biopsy.gg_left = patch.gg_left;
+      if (patch.gg_right !== undefined) record.biopsy.gg_right = patch.gg_right;
+      if (patch.cores_left !== undefined) record.biopsy.cores_left = patch.cores_left;
+      if (patch.cores_right !== undefined) record.biopsy.cores_right = patch.cores_right;
+      if (patch.mc_left !== undefined) record.biopsy.mc_left = patch.mc_left;
+      if (patch.mc_right !== undefined) record.biopsy.mc_right = patch.mc_right;
       if (patch.dec !== undefined)
         record.biopsy.decipher_score = patch.dec === null ? null : patch.dec;
-      if (patch.psma_ln !== undefined)
-        record.staging.lymph_nodes_psma = patch.psma_ln ? "positive" : undefined;
+      // ── Staging / Imaging ────────────────────────────────────────────────
       if (patch.mri_epe !== undefined) record.staging.epe = !!patch.mri_epe;
       if (patch.mri_svi !== undefined) record.staging.svi = !!patch.mri_svi;
       if (patch.pirads !== undefined) record.staging.max_pirads = patch.pirads;
+      if (patch.mri_size !== undefined) record.staging.lesion_size_cm = patch.mri_size;
+      if (patch.mri_abutment !== undefined) record.staging.abutment = patch.mri_abutment;
+      if (patch.mri_adc !== undefined) record.staging.adc_mean = patch.mri_adc;
+      if (patch.mus_ece !== undefined) record.staging.epe_mus = !!patch.mus_ece;
+      if (patch.mus_svi !== undefined) record.staging.svi_mus = !!patch.mus_svi;
+      if (patch.primus !== undefined) record.staging.max_primus = patch.primus;
+      if (patch.psma_epe !== undefined) record.staging.psma_epe = !!patch.psma_epe;
+      if (patch.psma_svi !== undefined) record.staging.psma_svi = !!patch.psma_svi;
       if (patch.suv !== undefined) record.staging.max_suv = patch.suv;
+      if (patch.psma_ln !== undefined)
+        record.staging.lymph_nodes_psma = patch.psma_ln ? "positive" : undefined;
       const next = patients.map((x) =>
         x.id === activeId ? { ...x, record } : x,
       );
