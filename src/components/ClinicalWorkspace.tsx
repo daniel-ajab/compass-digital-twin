@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, type ReactNode, type InputHTMLAttributes } from "react";
+import { useEffect, useState, type ReactNode, type InputHTMLAttributes } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -201,6 +201,32 @@ interface ClinicalWorkspaceProps {
   compact?: boolean;
 }
 
+/** Collapsible section wrapper matching HTML's "Input Variables ▼ show" pattern */
+function CollapsibleSection({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between rounded-t-lg border border-border bg-muted/20 px-4 py-2 text-left text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:bg-muted/30"
+      >
+        <span>{title}</span>
+        <span className="text-[9px] text-muted-foreground/60">{open ? "▲ hide" : "▼ show"}</span>
+      </button>
+      {open && <div className="border border-t-0 border-border rounded-b-lg">{children}</div>}
+    </div>
+  );
+}
+
 export function ClinicalWorkspace({ className, compact }: ClinicalWorkspaceProps) {
   const patients = usePatientStore((s) => s.patients);
   const activeId = usePatientStore((s) => s.activeId);
@@ -333,17 +359,21 @@ export function ClinicalWorkspace({ className, compact }: ClinicalWorkspaceProps
         </>
       )}
 
-      <Card className="overflow-hidden border-border">
-        <CardHeader className="border-b border-border bg-muted/20 pb-4">
-          <CardTitle className="text-base font-semibold tracking-tight text-foreground">
-            Clinical inputs
-          </CardTitle>
-          <CardDescription>
-            Edit preoperative variables for the active case, then apply to refresh COMPASS
-            predictions and the 3D twin.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6 pt-6">
+      <section aria-labelledby="lesions-heading-top">
+        <h2 id="lesions-heading-top" className="sr-only">
+          Lesion table
+        </h2>
+        <LesionTable />
+      </section>
+
+      <CollapsibleSection title="Input Variables" defaultOpen={false}>
+        <div className="overflow-hidden">
+        <div className="border-b border-border bg-muted/20 px-4 py-3">
+          <p className="text-xs text-muted-foreground">
+            Edit preoperative variables for the active case, then apply to refresh COMPASS predictions and the 3D twin.
+          </p>
+        </div>
+        <div className="space-y-6 p-4 pt-5">
           <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)} noValidate>
 
             {/* ── Demographics ── */}
@@ -892,15 +922,9 @@ export function ClinicalWorkspace({ className, compact }: ClinicalWorkspaceProps
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
-
-      <section aria-labelledby="lesions-heading">
-        <h2 id="lesions-heading" className="sr-only">
-          Lesion table
-        </h2>
-        <LesionTable />
-      </section>
+        </div>
+        </div>
+      </CollapsibleSection>
 
       {!compact && (
         <section aria-labelledby="zones-heading">
