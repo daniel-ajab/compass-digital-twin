@@ -1,4 +1,5 @@
 import {
+  Box3,
   CatmullRomCurve3,
   SphereGeometry,
   TubeGeometry,
@@ -24,6 +25,7 @@ import {
   DoubleSide,
   Material,
 } from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { fbm3D, noise3D } from "@/lib/three/noise";
 import type { ThreeZoneRuntime } from "@/types/prediction";
 import type { OverlayType } from "@/types/prediction";
@@ -306,7 +308,7 @@ function createZoneMesh(
       else if (iL) phi = iR ? -Math.PI / 2 - ut * (Math.PI / 4) : Math.PI / 2 + ut * (Math.PI / 4);
       else if (iM) phi = iR ? (-3 * Math.PI) / 4 - ut * (Math.PI / 4) : (3 * Math.PI) / 4 + ut * (Math.PI / 4);
       else phi = 0;
-      const r = Math.sqrt(1 - oy * oy);
+      const r = Math.sqrt(Math.max(0, 1 - oy * oy)); // clamp: apex yMn=-1.15 would give NaN
       const ox = r * Math.sin(phi);
       const oz = r * Math.cos(phi);
       let p = transformToProstate(ox, oy, oz, 0.065, dims, medianLobeGrade);
@@ -355,7 +357,7 @@ function createZoneMesh(
     new MeshBasicMaterial({
       color: overlayColor(prob, overlay),
       transparent: true,
-      opacity: 0.88,
+      opacity: 0.78,
       side: DoubleSide,
       depthWrite: false,
       depthTest: false,
@@ -556,6 +558,141 @@ export function createProstateScene(
   if (medianMesh) model.add(medianMesh);
 
   model.scale.setScalar(0.85);
+
+  // Load the real anatomical GLB asynchronously; procedural mesh is the fallback
+  // while loading (and if the file is absent).
+  const glbLoader = new GLTFLoader();
+  glbLoader.load(
+    `${import.meta.env.BASE_URL}models/prostate_anatomy.glb`,
+    (gltf) => {
+      // Force world-matrix propagation before bbox measurement.
+      gltf.scene.updateMatrixWorld(true);
+
+      const prostateNode = gltf.scene.getObjectByName("Prostate");
+      if (!prostateNode) return;
+
+      // Bake every mesh's world transform into vertex positions so all nodes
+      // end up with identity local transforms before we rescale.
+      gltf.scene.traverse((node) => {
+        if (node === gltf.scene) return;
+        if (node instanceof Mesh && node.geometry) {
+          node.geometry = node.geometry.clone();
+          node.geometry.applyMatrix4(node.matrixWorld);
+        }
+        node.position.set(0, 0, 0);
+        node.quaternion.set(0, 0, 0, 1);
+        node.scale.set(1, 1, 1);
+        node.updateMatrix();
+      });
+
+      // Propagate the new identity transforms so Box3.setFromObject reads
+      // vertex positions directly (without stale pre-bake matrixWorld).
+      gltf.scene.updateMatrixWorld(true);
+
+      // Measure Prostate bbox in gltf.scene local (now world) space.
+      const prostateBox = new Box3().setFromObject(prostateNode);
+      const prostateCenter = new Vector3();
+      const prostateSize = new Vector3();
+      prostateBox.getCenter(prostateCenter);
+      prostateBox.getSize(prostateSize);
+      if (Math.max(prostateSize.x, prostateSize.y, prostateSize.z) < 1e-5) return;
+
+      // Remap GLB vertices onto the same surface as the zone overlay by
+      // applying the same transformToProstate deformation.  This guarantees
+      // the anatomy and zones are co-planar at every rotation angle.
+      //
+      // Steps:
+      //  1. Centre + normalise each vertex to a unit-sphere direction.
+      //  2. Correct axes from baked GLB space (X=TR, Y=AP, Z=−CC) to
+      //     zone-overlay space (X=TR, Y=CC, Z=AP).
+      //  3. Pass the corrected direction to transformToProstate at offset 0
+      //     (anatomy sits exactly on the prostate surface; zones are at 0.065).
+      const halfMax = Math.max(prostateSize.x, prostateSize.y, prostateSize.z) / 2;
+
+      prostateNode.traverse((child) => {
+        if (!(child instanceof Mesh) || !child.geometry) return;
+        const pos = child.geometry.attributes.position;
+        const arr = new Float32Array(pos.count * 3);
+        for (let i = 0; i < pos.count; i++) {
+          const bx = (pos.getX(i) - prostateCenter.x) / halfMax;
+          const by = (pos.getY(i) - prostateCenter.y) / halfMax;
+          const bz = (pos.getZ(i) - prostateCenter.z) / halfMax;
+          const len = Math.sqrt(bx * bx + by * by + bz * bz) || 1;
+          // Axis correction: baked Y→AP→zone-Z, baked −Z→CC→zone-Y
+          const nx = bx / len;    // TR  (unchanged)
+          const ny = -bz / len;   // CC  (baked Z = −CC)
+          const nz = by / len;    // AP  (baked Y = AP)
+          const p = transformToProstate(nx, ny, nz, 0, dims, medianLobeGrade);
+          arr[i * 3]     = p.x;
+          arr[i * 3 + 1] = p.y;
+          arr[i * 3 + 2] = p.z;
+        }
+        child.geometry.setAttribute(
+          "position",
+          new Float32BufferAttribute(arr, 3),
+        );
+        child.geometry.computeVertexNormals();
+      });
+
+      // Vertices are now in model space — no additional scale/translate needed.
+      gltf.scene.scale.set(1, 1, 1);
+      gltf.scene.position.set(0, 0, 0);
+
+      // Apply the same linear axis-correction + scale to the GLB's own SV/VD
+      // meshes so they sit at the correct position relative to the remapped
+      // prostate.  Unlike the prostate we use a straight linear transform
+      // (not transformToProstate) so their shape is preserved.
+      //   baked X=TR → new X  (scale dims.tr / halfX)
+      //   baked Z=−CC → new Y  (scale dims.cc / halfZ, negate)
+      //   baked Y=AP  → new Z  (scale dims.ap / halfY)
+      const halfX = prostateSize.x / 2;
+      const halfY = prostateSize.y / 2;
+      const halfZ = prostateSize.z / 2;
+      const linSX = dims.tr / halfX;
+      const linSY = dims.cc / halfZ;
+      const linSZ = dims.ap / halfY;
+
+      for (const name of ["Seminal_R", "Seminal_L", "Ampulla_01"]) {
+        const node = gltf.scene.getObjectByName(name);
+        if (!node) continue;
+        node.traverse((child) => {
+          if (!(child instanceof Mesh) || !child.geometry) return;
+          const pos = child.geometry.attributes.position;
+          const arr = new Float32Array(pos.count * 3);
+          for (let i = 0; i < pos.count; i++) {
+            const bx = pos.getX(i) - prostateCenter.x;
+            const by = pos.getY(i) - prostateCenter.y;
+            const bz = pos.getZ(i) - prostateCenter.z;
+            arr[i * 3]     =  bx * linSX;
+            arr[i * 3 + 1] =  bz * linSY;   // positive: SV sits at base (top)
+            arr[i * 3 + 2] =  by * linSZ;
+          }
+          child.geometry.setAttribute("position", new Float32BufferAttribute(arr, 3));
+          child.geometry.computeVertexNormals();
+        });
+      }
+
+      // Hide only the urethra; show GLB SV and VD.
+      const urethraNode = gltf.scene.getObjectByName("Urethra");
+      if (urethraNode) urethraNode.visible = false;
+
+      // Swap procedural mesh for the GLB anatomy.
+      // GLB has SV + ampulla but no full vas deferens tube — keep procedural vd.
+      // Hide procedural sv and prostateMesh (replaced by GLB equivalents).
+      model.remove(prostateMesh);
+      prostateMesh.geometry.dispose();
+      (prostateMesh.material as Material).dispose();
+      sv.visible = false;
+      vd.visible = false;   // procedural VD tubes look like ureters — hidden
+      urethra.visible = false;
+
+      model.add(gltf.scene);
+    },
+    undefined,
+    () => {
+      // GLB unavailable (file not yet copied) — procedural mesh remains as fallback
+    },
+  );
 
   const dispose = () => {
     renderer.dispose();
