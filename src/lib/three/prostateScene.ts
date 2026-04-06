@@ -308,7 +308,7 @@ function createZoneMesh(
       else if (iL) phi = iR ? -Math.PI / 2 - ut * (Math.PI / 4) : Math.PI / 2 + ut * (Math.PI / 4);
       else if (iM) phi = iR ? (-3 * Math.PI) / 4 - ut * (Math.PI / 4) : (3 * Math.PI) / 4 + ut * (Math.PI / 4);
       else phi = 0;
-      const r = Math.sqrt(1 - oy * oy);
+      const r = Math.sqrt(Math.max(0, 1 - oy * oy)); // clamp: apex yMn=-1.15 would give NaN
       const ox = r * Math.sin(phi);
       const oz = r * Math.cos(phi);
       let p = transformToProstate(ox, oy, oz, 0.065, dims, medianLobeGrade);
