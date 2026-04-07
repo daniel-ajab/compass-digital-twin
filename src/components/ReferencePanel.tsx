@@ -23,7 +23,7 @@ export function ReferencePanel({ modal, onClose }: ReferencePanelProps) {
     <div className="flex h-full w-full flex-col bg-black">
       <video
         ref={videoRef}
-        src="/reference.mp4"
+        src={`${import.meta.env.BASE_URL}reference.mp4`}
         className="h-full w-full object-contain"
         controls
         playsInline
