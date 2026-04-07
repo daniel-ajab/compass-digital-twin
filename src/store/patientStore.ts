@@ -14,6 +14,9 @@ import type { CompassPredictions, ThreeZoneRuntime } from "@/types/prediction";
 import { emptyLesion } from "@/types/lesion";
 
 const STORAGE_KEY = "compass-digital-twin-state";
+// Bump this version whenever the blank-slate default changes so stale
+// localStorage data from previous sessions gets discarded automatically.
+const STORAGE_VERSION = 3;
 const HISTORY_LIMIT = 40;
 
 export interface PatientEntry {
@@ -351,7 +354,17 @@ export function hydrateFromLocalStorage(): void {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
-    const o = JSON.parse(raw) as { patients: PatientEntry[]; activeId: string | null };
+    const o = JSON.parse(raw) as {
+      patients: PatientEntry[];
+      activeId: string | null;
+      _v?: number;
+    };
+    // If the stored version doesn't match the current schema version, discard
+    // stale data so the fresh blank-slate default from patients.json is used.
+    if ((o._v ?? 0) !== STORAGE_VERSION) {
+      localStorage.removeItem(STORAGE_KEY);
+      return;
+    }
     if (o.patients?.length) {
       usePatientStore.setState({
         patients: o.patients,
@@ -368,7 +381,10 @@ export function hydrateFromLocalStorage(): void {
 export function autosavePatients(): void {
   const { patients, activeId } = usePatientStore.getState();
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ patients, activeId }));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ patients, activeId, _v: STORAGE_VERSION }),
+    );
   } catch {
     /* noop */
   }

@@ -10,6 +10,7 @@ import { ThreeCanvas } from "@/components/ThreeCanvas";
 import { ZoneLabelsOverlay } from "@/components/ZoneLabelsOverlay";
 import { CaseLog } from "@/components/CaseLog";
 import { InfoPanel } from "@/components/InfoPanel";
+import { ReferencePanel } from "@/components/ReferencePanel";
 import { PREDICTION_EXPLANATIONS } from "@/lib/compass/explainPrediction";
 import {
   deriveClinicalFromLesions,
@@ -67,6 +68,8 @@ export default function App() {
   const setInfoOpen = useUiStore((s) => s.setInfoOpen);
   const caseLogOpen = useUiStore((s) => s.caseLogOpen);
   const setCaseLogOpen = useUiStore((s) => s.setCaseLogOpen);
+  const referenceOpen = useUiStore((s) => s.referenceOpen);
+  const setReferenceOpen = useUiStore((s) => s.setReferenceOpen);
   const explainKey = useUiStore((s) => s.explainKey);
   const setExplainKey = useUiStore((s) => s.setExplainKey);
   const dark = useUiStore((s) => s.dark);
@@ -141,6 +144,18 @@ export default function App() {
           >
             <ClinicalWorkspace compact />
           </div>
+
+          {/* Reference tab — mobile only */}
+          <div
+            className={cn(
+              "relative z-10 min-h-0 w-full flex-1",
+              "max-lg:absolute max-lg:inset-0",
+              mobileWorkspace === "reference" ? "max-lg:flex max-lg:flex-col" : "max-lg:hidden",
+              "lg:hidden",
+            )}
+          >
+            {mobileWorkspace === "reference" && <ReferencePanel />}
+          </div>
         </main>
       </div>
 
@@ -152,6 +167,10 @@ export default function App() {
 
       {caseLogOpen && (
         <CaseLog onClose={() => setCaseLogOpen(false)} />
+      )}
+
+      {referenceOpen && (
+        <ReferencePanel modal onClose={() => setReferenceOpen(false)} />
       )}
 
       {explainKey && (

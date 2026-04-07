@@ -177,11 +177,12 @@ export function ControlsOverlay() {
         </div>
       </div>
 
-      {/* ── Bottom-left: legend (collapsible) ── */}
+      {/* ── Bottom-right (desktop) / Bottom-left (mobile): legend (collapsible) ── */}
       <div
         className={cn(
-          "pointer-events-auto absolute left-2 z-10 w-44 overflow-hidden rounded-lg transition-all lg:bottom-3",
-          "max-lg:bottom-[calc(0.75rem+7.5rem+env(safe-area-inset-bottom,0px))]",
+          "pointer-events-auto absolute z-10 w-52 overflow-hidden rounded-lg transition-all",
+          "lg:bottom-3 lg:right-2 lg:left-auto",
+          "max-lg:left-2 max-lg:bottom-[calc(0.75rem+7.5rem+env(safe-area-inset-bottom,0px))]",
           "glass",
         )}
       >
@@ -208,7 +209,7 @@ export function ControlsOverlay() {
               <span>Moderate</span>
               <span>{leg.high}</span>
             </div>
-            <p className="mt-1.5 text-[9px] leading-snug text-muted-foreground/80">
+            <p className="mt-1.5 whitespace-nowrap text-[9px] leading-snug text-muted-foreground/80">
               Green &lt;10% · Amber 10–30% · Red &gt;30%
             </p>
           </div>

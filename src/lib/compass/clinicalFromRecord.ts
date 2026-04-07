@@ -183,6 +183,9 @@ export function clinicalStateFromRecord(
   if (st.svi_mus) S.mus_svi = 1;
   if (st.psma_epe) S.psma_epe = 1;
   if (st.psma_svi) S.psma_svi = 1;
+  // If any PSMA staging flag is explicitly set, mark PSMA as available so
+  // downstream alerts fire correctly (psma_avail is otherwise only set by SUV).
+  if (S.psma_epe || S.psma_svi) S.psma_avail = 1;
   if (st.max_primus !== null && st.max_primus !== undefined)
     S.primus = Math.max(S.primus, st.max_primus);
 

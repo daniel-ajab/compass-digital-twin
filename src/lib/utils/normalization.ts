@@ -151,7 +151,7 @@ export function deriveClinicalFromLesions(
   const psmaRows = lesions.filter((l) => l.source === "PSMA");
 
   if (mriRows.length > 0) {
-    const lesionPirads = Math.max(...mriRows.map((l) => parseInt(l.score, 10) || 2));
+    const lesionPirads = Math.max(...mriRows.map((l) => Math.min(parseInt(l.score, 10) || 2, 5)));
     next.pirads = Math.max(base.pirads, lesionPirads);
     next.mri_epe = (base.mri_epe || mriRows.some((l) => l.epe)) ? 1 : 0;
     next.mri_svi = (base.mri_svi || mriRows.some((l) => l.svi)) ? 1 : 0;
