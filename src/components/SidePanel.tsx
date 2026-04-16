@@ -1,12 +1,14 @@
 import { Cpu } from "lucide-react";
 import { ClinicalWorkspace } from "@/components/ClinicalWorkspace";
 import { usePatientStore } from "@/store/patientStore";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { cn } from "@/lib/utils";
 
 export function SidePanel() {
   const patients = usePatientStore((s) => s.patients);
   const activeId = usePatientStore((s) => s.activeId);
   const active = patients.find((p) => p.id === activeId);
+  const isDesktop = useIsDesktop();
 
   return (
     <aside
@@ -33,7 +35,7 @@ export function SidePanel() {
       </div>
 
       <div className="app-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-muted/10 dark:bg-background/50">
-        <ClinicalWorkspace />
+        {isDesktop && <ClinicalWorkspace />}
       </div>
     </aside>
   );

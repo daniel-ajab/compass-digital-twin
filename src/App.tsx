@@ -20,6 +20,8 @@ import { clinicalStateFromRecord } from "@/lib/compass/clinicalFromRecord";
 import patientsCatalog from "@/data/patients.json";
 import {
   hydrateFromLocalStorage,
+  hydratePatientsFromCaseLog,
+  hydratePatientLibrary,
   usePatientStore,
 } from "@/store/patientStore";
 import { useUiStore } from "@/store/uiStore";
@@ -94,6 +96,9 @@ export default function App() {
       st.recompute();
       usePatientStore.setState({ loading: false });
     }
+    // Load saved library entries (full records) then fall back to case log snapshots.
+    hydratePatientLibrary();
+    hydratePatientsFromCaseLog();
   }, [bootstrapFromJson]);
 
   return (
