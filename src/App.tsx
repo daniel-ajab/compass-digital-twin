@@ -11,6 +11,7 @@ import { ZoneLabelsOverlay } from "@/components/ZoneLabelsOverlay";
 import { CaseLog } from "@/components/CaseLog";
 import { InfoPanel } from "@/components/InfoPanel";
 import { ReferencePanel } from "@/components/ReferencePanel";
+import { FunctionalOutcomesWorkspace } from "@/components/FunctionalOutcomesWorkspace";
 import { PREDICTION_EXPLANATIONS } from "@/lib/compass/explainPrediction";
 import {
   deriveClinicalFromLesions,
@@ -148,6 +149,18 @@ export default function App() {
             )}
           >
             <ClinicalWorkspace compact />
+          </div>
+
+          {/* Outcomes tab — mobile only */}
+          <div
+            className={cn(
+              "relative z-10 min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-muted/20 app-scroll dark:bg-background",
+              "max-lg:absolute max-lg:inset-0",
+              mobileWorkspace === "outcomes" ? "max-lg:flex max-lg:flex-col" : "max-lg:hidden",
+              "lg:hidden",
+            )}
+          >
+            <FunctionalOutcomesWorkspace />
           </div>
 
           {/* Reference tab — mobile only */}
