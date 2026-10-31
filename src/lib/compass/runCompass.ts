@@ -1,8 +1,5 @@
-import { ZONE_ANATOMY } from "@/lib/compass/constants";
-import { predictInflammationRisk } from "@/lib/compass/inflammationRisk";
 import { mapZoneDataToThree } from "@/lib/compass/mapZoneData";
 import { getNsGradeZoneAware } from "@/lib/compass/nsGrade";
-import { buildSurgicalPlan } from "@/lib/compass/surgicalPlan";
 import { predictBcrCox } from "@/lib/models/vnext/bcrCox";
 import { predictEceVNext } from "@/lib/models/vnext/ece";
 import { predictSviVNext } from "@/lib/models/vnext/svi";
@@ -122,17 +119,6 @@ export function runCompassModels(
   const bcr24 = bcrV.ok ? bcrV.risk24 : NaN;
   const bcr36 = bcrV.ok ? bcrV.risk36 : NaN;
 
-  const inflammation = predictInflammationRisk(S);
-  const plan = buildSurgicalPlan(S, nsDetailL, nsDetailR, sviL, sviR, eceL, eceR);
-
-  // Per-zone recommended NS grade → drives the "plan" 3D overlay.
-  for (const z of threeZones) {
-    const a = ZONE_ANATOMY[z.id];
-    if (!a) continue;
-    const side = a.side === "L" ? plan.left : plan.right;
-    z.planGrade = side.zoneGrades[a.zone] ?? side.nsGrade;
-  }
-
   const predictions: CompassPredictions = {
     ece,
     svi,
@@ -152,8 +138,6 @@ export function runCompassModels(
     sviR,
     nsDetailL,
     nsDetailR,
-    inflammation,
-    plan,
   };
 
   mapZoneDataToThree(P.zones, threeZones, predictions);

@@ -38,6 +38,8 @@ export function AppHeader() {
   const activeId = usePatientStore((s) => s.activeId);
   const loading = usePatientStore((s) => s.loading);
   const setActive = usePatientStore((s) => s.setActive);
+  const modelSet = usePatientStore((s) => s.modelSet);
+  const setModelSet = usePatientStore((s) => s.setModelSet);
   const undo = usePatientStore((s) => s.undo);
   const redo = usePatientStore((s) => s.redo);
 
@@ -125,6 +127,28 @@ export function AppHeader() {
 
       {/* Right actions */}
       <div className="ml-auto lg:ml-0 flex shrink-0 items-center gap-0.5">
+        {/* Model switch: original (v22, May) vs new (vNext) models and 3D mapping */}
+        <div
+          className="mr-1 flex overflow-hidden rounded-md border border-border text-[11px] font-semibold"
+          role="group"
+          aria-label="Prediction models"
+          title="Switch between the original (v22, May) and new (vNext) models. The 3D mapping and the predictions panel switch with them."
+        >
+          {([["v22", "Original v22"], ["vnext", "New vNext"]] as const).map(([m, l]) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setModelSet(m)}
+              aria-pressed={modelSet === m}
+              className={cn(
+                "px-2 py-1 transition-colors",
+                modelSet === m ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-muted/60",
+              )}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
         {/* Undo/Redo */}
         <div className="flex items-center">
           <Button

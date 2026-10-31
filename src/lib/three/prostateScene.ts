@@ -188,12 +188,6 @@ export function overlayColor(val: number, type: OverlayType): Color {
     const t = Math.min(1, (val - 0.35) / 0.35);
     return new Color(0.8, 0.4 - t * 0.3, 0.3 - t * 0.2);
   }
-  if (type === "plan") {
-    // val = (grade-1)/2 → 0 grade 1 (green), 0.5 grade 2 (amber), 1 grade 3 (red)
-    if (val < 0.25) return new Color(0.18, 0.78, 0.44);
-    if (val < 0.75) return new Color(0.9, 0.6, 0.1);
-    return new Color(0.9, 0.25, 0.15);
-  }
   return new Color(0.5, 0.5, 0.5);
 }
 
@@ -231,16 +225,11 @@ function lookupZoneValue(
           ? z.ece
           : overlay === "svi"
             ? z.svi
-            : overlay === "plan"
-              ? (z.planGrade - 1) / 2
-              : z.psm;
+            : z.psm;
     }
   }
   return 0.01;
 }
-
-/** Set only while capturing the report snapshot: non-cancer gland prints neutral grey and zone highlights show on both faces. */
-let neutralTissue = false;
 
 /**
  * Paint vertex colours on the GLB prostate meshes.
@@ -271,14 +260,7 @@ function paintGlbProstate(
       // anterior apex data only shows on truly anterior (nz > 0) vertices.
       const apexClamp = ny < -0.35 ? 0 : -0.18;
       const nzQ = nz >= apexClamp ? Math.max(nz, 0.005) : nz;
-      let val = lookupZoneValue(nx, ny, nzQ, zones, overlay);
-      if (neutralTissue) {
-        // Report snapshot: show each zone's highlight on both faces, so the anterior
-        // and posterior views each show the side and level of disease, whichever face it is on.
-        const mz = -nz;
-        const mzQ = mz >= apexClamp ? Math.max(mz, 0.005) : mz;
-        val = Math.max(val, lookupZoneValue(nx, ny, mzQ, zones, overlay));
-      }
+      const val = lookupZoneValue(nx, ny, nzQ, zones, overlay);
       let cr: number, cg: number, cb: number;
       // SVI is visualised on the SV meshes directly; keep the prostate body
       // in anatomical colour so it doesn't compete with the SV highlight.
@@ -288,11 +270,6 @@ function paintGlbProstate(
       } else {
         // Anatomical tissue palette — lighter anterior, darker posterior.
         cr = 0.52; cg = 0.24; cb = 0.22;
-        if (neutralTissue) {
-          cr = cg = cb = nz > 0.08 ? 0.86 : nz < -0.12 ? 0.74 : 0.8;
-          col[i * 3] = cr; col[i * 3 + 1] = cg; col[i * 3 + 2] = cb;
-          continue;
-        }
         if (nz > 0.08)  { cr += 0.12; cg += 0.09; cb += 0.07; }
         if (nz < -0.12) { cr -= 0.05; cg -= 0.03; cb -= 0.02; }
         if (ny > 0.32)  { cr += 0.03; cg += 0.02; }
@@ -529,9 +506,7 @@ function createZoneMesh(
         ? zone.ece
         : overlay === "svi"
           ? zone.svi
-          : overlay === "plan"
-            ? (zone.planGrade - 1) / 2
-            : zone.psm;
+          : zone.psm;
   const mesh = new Mesh(
     geo,
     new MeshBasicMaterial({
@@ -660,8 +635,6 @@ export interface ProstateSceneHandles {
   dispose: () => void;
   setSize: (w: number, h: number) => void;
   setBackground: (hex: number) => void;
-  /** Anterior and posterior views on white, non-cancer gland in neutral grey (for the printed report). */
-  snapshotViews: () => string[];
   updateZones: (
     zones: ThreeZoneRuntime[],
     overlay: OverlayType,
@@ -675,7 +648,6 @@ export function createProstateScene(
   overlay: OverlayType,
   dims: ProstateDims,
   medianLobeGrade: number,
-  onGlbLoad?: () => void,
 ): ProstateSceneHandles {
   // ── Procedural bump texture (created once, shared across all prostate meshes) ─
   // A tileable FBM noise map gives the surface a subtle organic bump/lump texture
@@ -768,15 +740,8 @@ export function createProstateScene(
   const glbSVRight: Mesh[] = [];
   let glbLoaded = false;
 
-  // Latest data handed to updateZones, replayed once the GLB finishes loading so
-  // a scene rebuilt mid-load (e.g. switching cases) is not left painted with the
-  // zones captured when the scene was created.
-  let lastZones = zones;
-  let lastOverlay = overlay;
-  let lastOpts = { heatmapVisible: false, lesionsOnly: false };
-
-  // Load the real anatomical GLB asynchronously; procedural mesh stays visible
-  // as a placeholder until the GLB is ready (or permanently if the file is absent).
+  // Load the real anatomical GLB asynchronously; procedural mesh is the fallback
+  // while loading (and if the file is absent).
   const glbLoader = new GLTFLoader();
   glbLoader.load(
     `${import.meta.env.BASE_URL}models/prostate_anatomy.glb`,
@@ -910,6 +875,10 @@ export function createProstateScene(
         });
       }
 
+      // Paint initial tissue colours onto the GLB prostate and SVs.
+      paintGlbProstate(glbProstateMeshes, zones, overlay, dims, false, false);
+      paintGlbSV(glbSVLeft, glbSVRight, zones, overlay, false);
+
       // Swap procedural anatomy for the GLB.  Floating heatmap tiles are
       // replaced by vertex colours; zone boundary outlines remain visible.
       model.remove(prostateMesh);
@@ -923,62 +892,12 @@ export function createProstateScene(
 
       model.add(gltf.scene);
       glbLoaded = true;
-      applyZones(lastZones, lastOverlay, lastOpts);
-      onGlbLoad?.();
     },
     undefined,
-    undefined,
+    () => {
+      // GLB unavailable — procedural mesh remains as fallback.
+    },
   );
-
-  function applyZones(
-    z: ThreeZoneRuntime[],
-    ov: OverlayType,
-    opts: { heatmapVisible: boolean; lesionsOnly: boolean },
-  ) {
-    if (glbLoaded) {
-      // GLB mode: paint vertex colours on the real prostate surface and SVs.
-      paintGlbProstate(
-        glbProstateMeshes,
-        z,
-        ov,
-        dims,
-        opts.heatmapVisible,
-        opts.lesionsOnly,
-      );
-      paintGlbSV(glbSVLeft, glbSVRight, z, ov, opts.heatmapVisible);
-      // Rebuild boundary lines so zone outlines reflect updated data.
-      buildZones(z, ov);
-      for (const mesh of zoneMeshes) {
-        const zn = mesh.userData.zone as ThreeZoneRuntime;
-        const val =
-          ov === "cancer" ? zn.cancer : ov === "ece" ? zn.ece : ov === "svi" ? zn.svi : ov === "plan" ? (zn.planGrade - 1) / 2 : zn.psm;
-        mesh.visible = opts.lesionsOnly ? (val ?? 0) >= 0.15 : true;
-      }
-      // Zone faces replaced by vertex colours; outlines shown when heatmap active.
-      heatmapGroup.visible = false;
-      boundaryGroup.visible = false;
-    } else {
-      buildZones(z, ov);
-      for (const mesh of zoneMeshes) {
-        const zn = mesh.userData.zone as ThreeZoneRuntime;
-        const val =
-          ov === "cancer"
-            ? zn.cancer
-            : ov === "ece"
-              ? zn.ece
-              : ov === "svi"
-                ? zn.svi
-                : ov === "plan"
-                  ? (zn.planGrade - 1) / 2
-                  : zn.psm;
-        (mesh.material as MeshBasicMaterial).color.copy(
-          overlayColor(val ?? 0.02, ov),
-        );
-        mesh.visible = opts.lesionsOnly ? (val ?? 0) >= 0.15 : true;
-      }
-      heatmapGroup.visible = opts.heatmapVisible;
-    }
-  }
 
   const dispose = () => {
     renderer.dispose();
@@ -1005,31 +924,48 @@ export function createProstateScene(
     setBackground: (hex: number) => {
       scene.background = new Color(hex);
     },
-    snapshotViews: () => {
-      const prevBg = scene.background;
-      const prevRot = { x: model.rotation.x, y: model.rotation.y };
-      neutralTissue = true;
-      applyZones(lastZones, lastOverlay, lastOpts);
-      scene.background = new Color(0xffffff);
-      const shots = (["anterior", "posterior"] as const).map((v) => {
-        model.rotation.x = VIEWS[v]!.x;
-        model.rotation.y = VIEWS[v]!.y;
-        renderer.render(scene, camera);
-        return renderer.domElement.toDataURL("image/jpeg", 0.92);
-      });
-      neutralTissue = false;
-      applyZones(lastZones, lastOverlay, lastOpts);
-      scene.background = prevBg;
-      model.rotation.x = prevRot.x;
-      model.rotation.y = prevRot.y;
-      renderer.render(scene, camera);
-      return shots;
-    },
     updateZones: (z, ov, opts) => {
-      lastZones = z;
-      lastOverlay = ov;
-      lastOpts = opts;
-      applyZones(z, ov, opts);
+      if (glbLoaded) {
+        // GLB mode: paint vertex colours on the real prostate surface and SVs.
+        paintGlbProstate(
+          glbProstateMeshes,
+          z,
+          ov,
+          dims,
+          opts.heatmapVisible,
+          opts.lesionsOnly,
+        );
+        paintGlbSV(glbSVLeft, glbSVRight, z, ov, opts.heatmapVisible);
+        // Rebuild boundary lines so zone outlines reflect updated data.
+        buildZones(z, ov);
+        for (const mesh of zoneMeshes) {
+          const zn = mesh.userData.zone as ThreeZoneRuntime;
+          const val =
+            ov === "cancer" ? zn.cancer : ov === "ece" ? zn.ece : ov === "svi" ? zn.svi : zn.psm;
+          mesh.visible = opts.lesionsOnly ? (val ?? 0) >= 0.15 : true;
+        }
+        // Zone faces replaced by vertex colours; outlines shown when heatmap active.
+        heatmapGroup.visible = false;
+        boundaryGroup.visible = false;
+      } else {
+        buildZones(z, ov);
+        for (const mesh of zoneMeshes) {
+          const zn = mesh.userData.zone as ThreeZoneRuntime;
+          const val =
+            ov === "cancer"
+              ? zn.cancer
+              : ov === "ece"
+                ? zn.ece
+                : ov === "svi"
+                  ? zn.svi
+                  : zn.psm;
+          (mesh.material as MeshBasicMaterial).color.copy(
+            overlayColor(val ?? 0.02, ov),
+          );
+          mesh.visible = opts.lesionsOnly ? (val ?? 0) >= 0.15 : true;
+        }
+        heatmapGroup.visible = opts.heatmapVisible;
+      }
     },
   };
 }

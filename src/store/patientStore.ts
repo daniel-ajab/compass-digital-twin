@@ -1,29 +1,55 @@
 import { validateVNextRequiredInputs, type RequiredInputProblem } from "@/lib/models/inputContract";
 import { create } from "zustand";
-import { useUiStore } from "@/store/uiStore";
 import { createDefaultZones, createBaseThreeZones } from "@/lib/compass/constants";
 import { clinicalStateFromRecord } from "@/lib/compass/clinicalFromRecord";
 import { mapLesionsToZones } from "@/lib/compass/lesionZones";
 import { runCompassModels } from "@/lib/compass/runCompass";
-import { normalizePdi, pdiTotal } from "@/lib/compass/planeDifficultyIndex";
 import { buildProstateRecord } from "@/lib/compass/recordFactory";
 import {
   deriveClinicalFromLesions,
   lesionsFromRows,
 } from "@/lib/utils/normalization";
 import { defaultClinicalState } from "@/types/patient";
-import type { ClinicalState, Prostate3DInputV1, ZoneMap } from "@/types/patient";
+import type { Prostate3DInputV1, ZoneMap } from "@/types/patient";
 import type { LesionRow } from "@/types/lesion";
 import type { CompassPredictions, ThreeZoneRuntime } from "@/types/prediction";
 import { emptyLesion } from "@/types/lesion";
-import { isDemoMode } from "@/lib/demoMode";
+import { runLegacy, type LegacyPredictions } from "@/legacy/run";
+
+/**
+ * Which engine runs: "vnext" (Daniel's October models) or "v22" (his original
+ * May 13 models and 3D mapping, in src/legacy). For side-by-side testing.
+ */
+export type ModelSet = "vnext" | "v22";
+const MODEL_SET_KEY = "compass-model-set";
+function readModelSet(): ModelSet {
+  try {
+    return localStorage.getItem(MODEL_SET_KEY) === "v22" ? "v22" : "vnext";
+  } catch {
+    return "vnext";
+  }
+}
+
+/**
+ * The v22 run in the shape the rest of the UI reads. v22 has one PSM and one
+ * BCR: PSM fills both sides, BCR fills the single-number slot (bcr36), and the
+ * 12/24-month BCR stay NaN. The original values are kept in legacyPredictions.
+ */
+function fromLegacy(L: LegacyPredictions): CompassPredictions {
+  return {
+    ece: L.ece, svi: L.svi, upgrade: L.upgrade,
+    psmL: L.psm, psmR: L.psm,
+    bcr12: NaN, bcr24: NaN, bcr36: L.bcr,
+    lni: L.lni, extensive: L.extensive,
+    nsL: L.nsL, nsR: L.nsR, eceL: L.eceL, eceR: L.eceR, sviL: L.sviL, sviR: L.sviR,
+    nsDetailL: L.nsDetailL, nsDetailR: L.nsDetailR,
+  };
+}
 
 const STORAGE_KEY = "compass-digital-twin-state";
 // Bump this version whenever the blank-slate default changes so stale
 // localStorage data from previous sessions gets discarded automatically.
-// v4: default schema gained the `history` (inflammation-risk inputs) and
-// `plan` (surgeon's operative plan) blocks.
-const STORAGE_VERSION = 4;
+const STORAGE_VERSION = 3;
 const HISTORY_LIMIT = 40;
 // Separate key for cases saved via the CaseLog, so they persist in the dropdown.
 const PATIENT_LIBRARY_KEY = "compass-patient-library";
@@ -35,8 +61,6 @@ export interface PatientEntry {
   name: string;
   record: Prostate3DInputV1;
   lesionRows: LesionRow[];
-  /** set when this entry was loaded from a read-only demo template (src/data/demoCases.ts) */
-  demoId?: string;
 }
 
 function clone<T>(x: T): T {
@@ -72,6 +96,10 @@ interface PatientState {
    * missing, or an imaging-status conflict. Empty when predictions exist.
    */
   missingRequired: RequiredInputProblem[];
+  /** Engine in use, and the raw v22 output when it is "v22" (null otherwise). */
+  modelSet: ModelSet;
+  legacyPredictions: LegacyPredictions | null;
+  setModelSet: (m: ModelSet) => void;
   threeZones: ThreeZoneRuntime[];
   loading: boolean;
   history: string[];
@@ -88,22 +116,13 @@ interface PatientState {
    * cleared REQUIRED field writes null to the record instead of a silent
    * default; `clinicalStateFromRecord` then reports it via `required_present`.
    */
+  /** Add a blank case (no PSA, volume, grade group or findings) and select it. */
+  newCase: () => void;
   updateClinicalForm: (
     patch: Partial<
       Omit<import("@/types/patient").ClinicalState, "psa" | "vol" | "gg">
     > & { psa?: number | null; vol?: number | null; gg?: number | null },
   ) => void;
-  /** Wholesale-replaces one patient's record + lesions — used by patient view's "reset to original" after local-only edits (e.g. Modifiable Factors exploration). */
-  setPreopReview: (review: Prostate3DInputV1["preop_review"]) => void;
-  /**
-   * Safe-sheet import: the surgeon's expected NS grade (plan.ns_expected_*, kept
-   * apart from ns_override) and the sheet's row text (sheet_notes, never read
-   * by a model). Neither is a clinical-form field, so they have their own action.
-   */
-  applySheetCaseData: (data: { nsExpectedL?: number; nsExpectedR?: number; notes?: Record<string, string> }) => void;
-  newCase: () => void;
-  /** Restore the active case to blank. */
-  resetActiveCase: () => void;
   importJsonFile: (text: string, label?: string) => void;
   exportActiveJson: () => string;
   resetActiveToSeed: () => void;
@@ -111,10 +130,8 @@ interface PatientState {
   redo: () => void;
   pushHistory: () => void;
   recompute: () => void;
-  computeEntryPredictions: (entry: PatientEntry) => {
-    S: ClinicalState;
-    predictions: CompassPredictions;
-  };
+  /** Run the models on any case (not only the active one), for the multi-case comparison. */
+  computeEntryPredictions: (entry: PatientEntry) => { predictions: CompassPredictions };
 }
 
 /** A new case with nothing filled in: required inputs and all findings absent. */
@@ -175,6 +192,14 @@ export const usePatientStore = create<PatientState>()((set, get) => ({
     activeId: null,
     predictions: null,
     missingRequired: [],
+    modelSet: readModelSet(),
+    legacyPredictions: null,
+
+    setModelSet: (m) => {
+      try { localStorage.setItem(MODEL_SET_KEY, m); } catch { /* private mode */ }
+      set({ modelSet: m });
+      get().recompute();
+    },
     threeZones: createBaseThreeZones(),
     loading: true,
     history: [],
@@ -231,7 +256,6 @@ export const usePatientStore = create<PatientState>()((set, get) => ({
       });
       get().recompute();
       get().pushHistory();
-      if (isDemoMode()) return;
       try {
         localStorage.setItem(
           STORAGE_KEY,
@@ -249,7 +273,6 @@ export const usePatientStore = create<PatientState>()((set, get) => ({
     setActive: (id) => {
       set({ activeId: id });
       get().recompute();
-      if (isDemoMode()) return;
       try {
         const { patients } = get();
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ patients, activeId: id }));
@@ -267,11 +290,30 @@ export const usePatientStore = create<PatientState>()((set, get) => ({
       get().pushHistory();
     },
 
+    computeEntryPredictions: (entry) => {
+      const record = clone(entry.record);
+      record.zones = mergeZones(record.zones);
+      record.lesions = entry.lesionRows;
+      if (get().modelSet === "v22") {
+        return { predictions: fromLegacy(runLegacy(entry.record, entry.lesionRows).predictions) };
+      }
+      const S = deriveClinicalFromLesions(clinicalStateFromRecord(record), lesionsFromRows(entry.lesionRows));
+      mapLesionsToZones(record.zones, entry.lesionRows, S);
+      const working: Prostate3DInputV1 = { ...record, zones: record.zones };
+      return { predictions: runCompassModels(S, working, entry.lesionRows, clone(createBaseThreeZones())) };
+    },
+
     recompute: () => {
       const { patients, activeId } = get();
       const entry = patients.find((p) => p.id === activeId);
       if (!entry) {
-        set({ predictions: null, missingRequired: [], threeZones: createBaseThreeZones() });
+        set({ predictions: null, legacyPredictions: null, missingRequired: [], threeZones: createBaseThreeZones() });
+        return;
+      }
+      // Original engine: runs as it did in May (its own defaults, no required-input gate).
+      if (get().modelSet === "v22") {
+        const L = runLegacy(entry.record, entry.lesionRows);
+        set({ predictions: fromLegacy(L.predictions), legacyPredictions: L.predictions, missingRequired: [], threeZones: L.threeZones });
         return;
       }
       const record = clone(entry.record);
@@ -283,57 +325,14 @@ export const usePatientStore = create<PatientState>()((set, get) => ({
       // predictions from invented defaults. Every panel already handles null.
       const gate = validateVNextRequiredInputs(S);
       if (!gate.ok) {
-        set({ predictions: null, missingRequired: gate.problems, threeZones: createBaseThreeZones() });
+        set({ predictions: null, legacyPredictions: null, missingRequired: gate.problems, threeZones: createBaseThreeZones() });
         return;
       }
       mapLesionsToZones(record.zones, entry.lesionRows, S);
       const working: Prostate3DInputV1 = { ...record, zones: record.zones };
       const threeZones = clone(createBaseThreeZones());
       const predictions = runCompassModels(S, working, entry.lesionRows, threeZones);
-      set({ predictions, missingRequired: [], threeZones });
-    },
-
-    computeEntryPredictions: (entry) => {
-      const record = clone(entry.record);
-      record.zones = mergeZones(record.zones);
-      record.lesions = entry.lesionRows;
-      const S0 = clinicalStateFromRecord(record);
-      const S = deriveClinicalFromLesions(S0, lesionsFromRows(entry.lesionRows));
-      mapLesionsToZones(record.zones, entry.lesionRows, S);
-      const working: Prostate3DInputV1 = { ...record, zones: record.zones };
-      const threeZones = clone(createBaseThreeZones());
-      const predictions = runCompassModels(S, working, entry.lesionRows, threeZones);
-      return { S, predictions };
-    },
-
-    applySheetCaseData: ({ nsExpectedL, nsExpectedR, notes }) => {
-      const { activeId, patients } = get();
-      if (!activeId) return;
-      set({
-        patients: patients.map((p) => {
-          if (p.id !== activeId) return p;
-          const record = clone(p.record);
-          if (nsExpectedL !== undefined || nsExpectedR !== undefined) {
-            const PL = (record.plan ??= {});
-            if (nsExpectedL !== undefined) PL.ns_expected_l = nsExpectedL;
-            if (nsExpectedR !== undefined) PL.ns_expected_r = nsExpectedR;
-          }
-          if (notes && Object.keys(notes).length) record.sheet_notes = { ...record.sheet_notes, ...notes };
-          return { ...p, record };
-        }),
-      });
-    },
-
-    setPreopReview: (review) => {
-      const { activeId, patients } = get();
-      if (!activeId) return;
-      set({
-        patients: patients.map((p) =>
-          p.id === activeId ? { ...p, record: { ...clone(p.record), preop_review: review ?? null } } : p,
-        ),
-      });
-      get().recompute();
-      get().pushHistory();
+      set({ predictions, legacyPredictions: null, missingRequired: [], threeZones });
     },
 
     updateLesionRows: (rows) => {
@@ -382,7 +381,6 @@ export const usePatientStore = create<PatientState>()((set, get) => ({
       if (patch.exercise !== undefined) record.patient.exercise = patch.exercise;
       if (patch.pfmt !== undefined) record.patient.pfmt = patch.pfmt;
       if (patch.alcohol !== undefined) record.patient.alcohol = patch.alcohol;
-      if (patch.diet !== undefined) record.patient.diet = patch.diet;
       if (patch.pde5 !== undefined) {
         record.patient.pde5_plan = patch.pde5;
         record.patient.pde5 = patch.pde5 !== "none";
@@ -432,67 +430,6 @@ export const usePatientStore = create<PatientState>()((set, get) => ({
       if (patch.suv !== undefined) record.staging.max_suv = patch.suv;
       if (patch.psma_ln !== undefined)
         record.staging.lymph_nodes_psma = patch.psma_ln ? "positive" : undefined;
-      // ── Anatomy / history (inflammation-risk model) ──────────────────────
-      if (patch.median_lobe_grade !== undefined)
-        record.prostate.median_lobe_grade = patch.median_lobe_grade;
-      const H = (record.history ??= {});
-      const hSet: (keyof NonNullable<Prostate3DInputV1["history"]>)[] = [
-        "prior_turp", "prior_urolift", "prior_greenlight", "prior_holep",
-        "prior_rezum", "prior_pelvic_radiation", "urinary_retention",
-        "recurrent_uti", "treated_prostatitis", "biopsy_shows_inflammation",
-        "crohns", "ulcerative_colitis", "diverticulitis", "pelvic_abscess",
-        "hernia_mesh", "rectal_fistula", "radiation_proctitis",
-        "prior_abdominal_surgery", "anticoagulant", "osa",
-        "mri_periprostatic_fat_stranding",
-        "catheter_prolonged_or_traumatic", "biopsy_recent_or_complicated",
-        "mri_post_biopsy_hemorrhage", "radiation_brachytherapy", "bph_procedure_complicated", "five_ari_long_term", "neoadjuvant_adt",
-        "flag_active_infection", "flag_imaging_discordant", "flag_mri_artifact",
-        "flag_key_data_missing",
-      ];
-      for (const k of hSet) {
-        const v = (patch as Record<string, unknown>)[k];
-        if (v !== undefined) (H as Record<string, unknown>)[k] = v;
-      }
-      if (patch.asa_class !== undefined) H.asa_class = patch.asa_class;
-      if (patch.biopsy_sessions !== undefined) H.biopsy_sessions = patch.biopsy_sessions;
-      if (patch.mri_periprostatic_inflammation !== undefined)
-        H.mri_periprostatic_inflammation = patch.mri_periprostatic_inflammation;
-      if (patch.prior_pelvic_surgery !== undefined) H.prior_pelvic_surgery = patch.prior_pelvic_surgery;
-      if (patch.penile_prosthesis_reservoir !== undefined) H.penile_prosthesis_reservoir = patch.penile_prosthesis_reservoir;
-      if (patch.pelvic_visceral_fat_cm3 !== undefined) H.pelvic_visceral_fat_cm3 = patch.pelvic_visceral_fat_cm3;
-      if (patch.crp !== undefined) H.crp = patch.crp;
-      if (patch.nlr !== undefined) H.nlr = patch.nlr;
-      if (patch.intraop_inflammation_l !== undefined)
-        H.intraop_inflammation_l = patch.intraop_inflammation_l || null;
-      if (patch.intraop_inflammation_r !== undefined)
-        H.intraop_inflammation_r = patch.intraop_inflammation_r || null;
-      const hNumSet: (keyof NonNullable<Prostate3DInputV1["history"]>)[] = [
-        "mri_capsule_interface_l", "mri_capsule_interface_r",
-        "mri_nvb_plane_l", "mri_nvb_plane_r",
-        "mri_post_treatment_distortion_l", "mri_post_treatment_distortion_r",
-        "mri_nonmass_inflammatory_signal_l", "mri_nonmass_inflammatory_signal_r",
-        "mri_fat_stranding_l", "mri_fat_stranding_r",
-        "prior_focal_ablation_l", "prior_focal_ablation_r", "mri_denonvilliers",
-      ];
-      for (const k of hNumSet) {
-        const v = (patch as Record<string, number | undefined>)[k];
-        if (v !== undefined) (H as Record<string, unknown>)[k] = v || null;
-      }
-      for (const k of ["plane_difficulty_l", "plane_difficulty_r"] as const) {
-        const v = patch[k];
-        if (v !== undefined) {
-          const scores = normalizePdi(v);
-          H[k] = pdiTotal(scores) > 0 ? scores : null;
-        }
-      }
-      // ── Surgeon's operative plan ─────────────────────────────────────────
-      const PL = (record.plan ??= {});
-      if (patch.plan_ns_override_l !== undefined) PL.ns_override_l = patch.plan_ns_override_l;
-      if (patch.plan_ns_override_r !== undefined) PL.ns_override_r = patch.plan_ns_override_r;
-      if (patch.plan_sv_preservation_l !== undefined) PL.sv_preservation_l = patch.plan_sv_preservation_l;
-      if (patch.plan_sv_preservation_r !== undefined) PL.sv_preservation_r = patch.plan_sv_preservation_r;
-      if (patch.plan_hydrodissection_l !== undefined) PL.hydrodissection_l = patch.plan_hydrodissection_l;
-      if (patch.plan_hydrodissection_r !== undefined) PL.hydrodissection_r = patch.plan_hydrodissection_r;
       const next = patients.map((x) =>
         x.id === activeId ? { ...x, record } : x,
       );
@@ -513,20 +450,6 @@ export const usePatientStore = create<PatientState>()((set, get) => ({
         lesionRows: [],
       };
       set({ patients: [...get().patients, entry], activeId: id });
-      get().recompute();
-      get().pushHistory();
-    },
-
-    resetActiveCase: () => {
-      const { activeId, patients } = get();
-      const active = patients.find((p) => p.id === activeId);
-      if (!active) return;
-      const record = buildProstateRecord(defaultClinicalState(), []);
-      set({
-        patients: patients.map((p) =>
-          p.id === activeId ? { ...p, record, lesionRows: [] } : p,
-        ),
-      });
       get().recompute();
       get().pushHistory();
     },
@@ -560,12 +483,6 @@ export const usePatientStore = create<PatientState>()((set, get) => ({
         lesionsFromRows(p.lesionRows),
       );
       const out = buildProstateRecord(S, p.lesionRows);
-      // buildProstateRecord rebuilds from ClinicalState, which has no home for
-      // these two — carry them across or an export silently loses them.
-      const { ns_expected_l, ns_expected_r } = p.record.plan ?? {};
-      if (ns_expected_l !== undefined) out.plan = { ...out.plan, ns_expected_l };
-      if (ns_expected_r !== undefined) out.plan = { ...out.plan, ns_expected_r };
-      if (p.record.sheet_notes) out.sheet_notes = p.record.sheet_notes;
       out.zones = mergeZones(p.record.zones);
       mapLesionsToZones(out.zones, p.lesionRows, S);
       return JSON.stringify(out, null, 2);
@@ -593,7 +510,6 @@ export const usePatientStore = create<PatientState>()((set, get) => ({
 
 /** Hydrate from localStorage after patients.json load */
 export function hydrateFromLocalStorage(): void {
-  if (isDemoMode()) return;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
@@ -621,13 +537,9 @@ export function hydrateFromLocalStorage(): void {
   }
 }
 
-let saveStatusResetTimer: ReturnType<typeof setTimeout> | undefined;
-
 export function autosavePatients(): void {
-  if (isDemoMode()) return;
-  useUiStore.getState().setSaveStatus("saving");
+  const { patients, activeId } = usePatientStore.getState();
   try {
-    const { patients, activeId } = usePatientStore.getState();
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ patients, activeId, _v: STORAGE_VERSION }),
@@ -635,15 +547,12 @@ export function autosavePatients(): void {
   } catch {
     /* noop */
   }
-  clearTimeout(saveStatusResetTimer);
-  saveStatusResetTimer = setTimeout(() => useUiStore.getState().setSaveStatus("saved"), 400);
 }
 
 usePatientStore.subscribe(autosavePatients);
 
 /** Save a PatientEntry to the persistent library (used by CaseLog saves). */
 export function savePatientToLibrary(entry: PatientEntry): void {
-  if (isDemoMode()) return;
   try {
     const existing = JSON.parse(
       localStorage.getItem(PATIENT_LIBRARY_KEY) || "[]",
@@ -701,7 +610,6 @@ export function loadPatientFromLibrary(id: string, displayName: string): boolean
  * Skips entries already present by id.
  */
 export function hydratePatientsFromCaseLog(): void {
-  if (isDemoMode()) return;
   try {
     const raw = localStorage.getItem(CASE_LOG_KEY);
     if (!raw) return;
@@ -720,7 +628,7 @@ export function hydratePatientsFromCaseLog(): void {
     const newOnes: PatientEntry[] = cases
       .filter((c) => !existingIds.has(c.id))
       .map((c) => {
-        const name = (c.notes || "").trim() || `GG${c.gg} · PSA ${c.psa}`;
+        const name = (c.notes || "").trim() || `${c.date} — GG${c.gg} PSA ${c.psa}`;
         const zones = createDefaultZones();
         const record: Prostate3DInputV1 = {
           _schema: "prostate-3d-input-v1",
@@ -764,32 +672,8 @@ export function hydratePatientsFromCaseLog(): void {
   }
 }
 
-/** Return all entries from the persistent patient library. */
-export function getPatientLibrary(): PatientEntry[] {
-  if (isDemoMode()) return [];
-  try {
-    return JSON.parse(localStorage.getItem(PATIENT_LIBRARY_KEY) || "[]") as PatientEntry[];
-  } catch {
-    return [];
-  }
-}
-
-/** Merge entries into the persistent patient library (replaces by id). */
-export function mergePatientLibrary(entries: PatientEntry[]): void {
-  if (isDemoMode()) return;
-  try {
-    const existing = getPatientLibrary();
-    const byId = new Map(existing.map((e) => [e.id, e]));
-    for (const e of entries) byId.set(e.id, e);
-    localStorage.setItem(PATIENT_LIBRARY_KEY, JSON.stringify([...byId.values()]));
-  } catch {
-    /* noop */
-  }
-}
-
 /** Load library patients into the store (patients not already present by id). */
 export function hydratePatientLibrary(): void {
-  if (isDemoMode()) return;
   try {
     const raw = localStorage.getItem(PATIENT_LIBRARY_KEY);
     if (!raw) return;
@@ -808,42 +692,6 @@ export function hydratePatientLibrary(): void {
       usePatientStore.setState({ patients: [...patients, ...newOnes] });
       usePatientStore.getState().recompute();
     }
-  } catch {
-    /* noop */
-  }
-}
-
-/**
- * Upsert all library entries into the store — updates existing patients AND
- * adds new ones. Use after a cloud pull so incoming data overwrites stale local state.
- * Preserves the current display name for any patient already in the store.
- */
-export function syncPatientLibraryToStore(): void {
-  try {
-    const raw = localStorage.getItem(PATIENT_LIBRARY_KEY);
-    if (!raw) return;
-    const library = JSON.parse(raw) as PatientEntry[];
-    if (!library.length) return;
-    const { patients } = usePatientStore.getState();
-    const storeById = new Map(patients.map((p) => [p.id, p]));
-
-    const upserted = library.map((e) => {
-      const existing = storeById.get(e.id);
-      return {
-        ...e,
-        // Keep existing display name so the dropdown label doesn't reset
-        name: existing?.name ?? e.name,
-        record: { ...e.record, zones: mergeZones(e.record.zones || {}) },
-        lesionRows: ensureLesionIds(e.lesionRows || []),
-      };
-    });
-
-    // Append any store patients that weren't in the pulled library
-    const libraryIds = new Set(library.map((e) => e.id));
-    const storeOnly = patients.filter((p) => !libraryIds.has(p.id));
-
-    usePatientStore.setState({ patients: [...upserted, ...storeOnly] });
-    usePatientStore.getState().recompute();
   } catch {
     /* noop */
   }

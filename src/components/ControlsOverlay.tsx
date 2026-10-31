@@ -58,13 +58,6 @@ const LEGEND: Record<OverlayType, { title: string; gradient: string; low: string
     high: "High",
     note: "Blue <15% · Amber 15–35% · Red >35%",
   },
-  // Not offered in this UI's overlay buttons; present only to satisfy the type.
-  plan: {
-    title: "NS plan",
-    gradient: "linear-gradient(to right,#22c55e,#f59e0b,#ef4444)",
-    low: "Grade 1", high: "Grade 3",
-    note: "Green intrafascial · Amber interfascial · Red wide",
-  },
 };
 
 const pillBase =

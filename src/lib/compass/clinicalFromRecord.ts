@@ -1,4 +1,3 @@
-import { normalizePdi } from "@/lib/compass/planeDifficultyIndex";
 import { resolveImagingAvailability } from "@/lib/compass/imagingAvailability";
 import {
   defaultClinicalState,
@@ -135,7 +134,6 @@ export function clinicalStateFromRecord(
   if (pat.exercise) S.exercise = pat.exercise;
   if (pat.pfmt) S.pfmt = pat.pfmt;
   if (pat.alcohol) S.alcohol = pat.alcohol;
-  if (pat.diet) S.diet = pat.diet;
   if (pat.pde5_plan) S.pde5 = pat.pde5_plan;
   else if (pat.pde5 === true) S.pde5 = "daily";
   S.laterality = bx.laterality || "bilateral";
@@ -247,89 +245,6 @@ export function clinicalStateFromRecord(
       S.pirads = null;
   }
   if (avail.status.psma !== "performed" && S.psma_ln === 0) S.psma_ln = null;
-
-  if (pr.median_lobe_grade !== null && pr.median_lobe_grade !== undefined)
-    S.median_lobe_grade = pr.median_lobe_grade;
-
-  const h = P.history;
-  if (h) {
-    S.prior_turp = !!h.prior_turp;
-    S.prior_urolift = !!h.prior_urolift;
-    S.prior_greenlight = !!h.prior_greenlight;
-    S.prior_holep = !!h.prior_holep;
-    S.prior_rezum = !!h.prior_rezum;
-    S.prior_pelvic_radiation = !!h.prior_pelvic_radiation;
-    S.urinary_retention = !!h.urinary_retention;
-    S.recurrent_uti = !!h.recurrent_uti;
-    S.treated_prostatitis = !!h.treated_prostatitis;
-    S.biopsy_shows_inflammation = !!h.biopsy_shows_inflammation;
-    if (h.biopsy_sessions !== null && h.biopsy_sessions !== undefined)
-      S.biopsy_sessions = h.biopsy_sessions;
-    S.crohns = !!h.crohns;
-    S.ulcerative_colitis = !!h.ulcerative_colitis;
-    S.diverticulitis = !!h.diverticulitis;
-    S.pelvic_abscess = !!h.pelvic_abscess;
-    S.hernia_mesh = !!h.hernia_mesh;
-    S.rectal_fistula = !!h.rectal_fistula;
-    S.radiation_proctitis = !!h.radiation_proctitis;
-    if (h.asa_class !== null && h.asa_class !== undefined) S.asa_class = h.asa_class;
-    S.prior_abdominal_surgery = !!h.prior_abdominal_surgery;
-    S.anticoagulant = !!h.anticoagulant;
-    S.osa = !!h.osa;
-    if (h.mri_periprostatic_inflammation)
-      S.mri_periprostatic_inflammation = h.mri_periprostatic_inflammation;
-    S.mri_periprostatic_fat_stranding = !!h.mri_periprostatic_fat_stranding;
-    if (h.intraop_inflammation_l !== null && h.intraop_inflammation_l !== undefined)
-      S.intraop_inflammation_l = h.intraop_inflammation_l;
-    if (h.intraop_inflammation_r !== null && h.intraop_inflammation_r !== undefined)
-      S.intraop_inflammation_r = h.intraop_inflammation_r;
-    const num = (v: number | null | undefined, fallback: number) =>
-      v !== null && v !== undefined ? v : fallback;
-    S.mri_capsule_interface_l = num(h.mri_capsule_interface_l, S.mri_capsule_interface_l);
-    S.mri_capsule_interface_r = num(h.mri_capsule_interface_r, S.mri_capsule_interface_r);
-    S.mri_nvb_plane_l = num(h.mri_nvb_plane_l, S.mri_nvb_plane_l);
-    S.mri_nvb_plane_r = num(h.mri_nvb_plane_r, S.mri_nvb_plane_r);
-    S.mri_post_treatment_distortion_l = num(h.mri_post_treatment_distortion_l, S.mri_post_treatment_distortion_l);
-    S.mri_post_treatment_distortion_r = num(h.mri_post_treatment_distortion_r, S.mri_post_treatment_distortion_r);
-    S.mri_nonmass_inflammatory_signal_l = num(h.mri_nonmass_inflammatory_signal_l, S.mri_nonmass_inflammatory_signal_l);
-    S.mri_nonmass_inflammatory_signal_r = num(h.mri_nonmass_inflammatory_signal_r, S.mri_nonmass_inflammatory_signal_r);
-    S.mri_fat_stranding_l = num(h.mri_fat_stranding_l, S.mri_fat_stranding_l);
-    S.mri_fat_stranding_r = num(h.mri_fat_stranding_r, S.mri_fat_stranding_r);
-    S.prior_focal_ablation_l = num(h.prior_focal_ablation_l, S.prior_focal_ablation_l);
-    S.prior_focal_ablation_r = num(h.prior_focal_ablation_r, S.prior_focal_ablation_r);
-    if (h.prior_pelvic_surgery) S.prior_pelvic_surgery = h.prior_pelvic_surgery;
-    if (h.penile_prosthesis_reservoir) S.penile_prosthesis_reservoir = h.penile_prosthesis_reservoir;
-    S.catheter_prolonged_or_traumatic = !!h.catheter_prolonged_or_traumatic;
-    S.biopsy_recent_or_complicated = !!h.biopsy_recent_or_complicated;
-    S.mri_post_biopsy_hemorrhage = !!h.mri_post_biopsy_hemorrhage;
-    S.radiation_brachytherapy = !!h.radiation_brachytherapy;
-    S.bph_procedure_complicated = !!h.bph_procedure_complicated;
-    S.five_ari_long_term = !!h.five_ari_long_term;
-    S.mri_denonvilliers = num(h.mri_denonvilliers, S.mri_denonvilliers);
-    S.plane_difficulty_l = normalizePdi(h.plane_difficulty_l);
-    S.plane_difficulty_r = normalizePdi(h.plane_difficulty_r);
-    if (h.pelvic_visceral_fat_cm3 !== null && h.pelvic_visceral_fat_cm3 !== undefined)
-      S.pelvic_visceral_fat_cm3 = h.pelvic_visceral_fat_cm3;
-    S.neoadjuvant_adt = !!h.neoadjuvant_adt;
-    if (h.crp !== null && h.crp !== undefined) S.crp = h.crp;
-    if (h.nlr !== null && h.nlr !== undefined) S.nlr = h.nlr;
-    S.flag_active_infection = !!h.flag_active_infection;
-    S.flag_imaging_discordant = !!h.flag_imaging_discordant;
-    S.flag_mri_artifact = !!h.flag_mri_artifact;
-    S.flag_key_data_missing = !!h.flag_key_data_missing;
-  }
-
-  const pl = P.plan;
-  if (pl) {
-    const tri = (v: boolean | null | undefined): boolean | null =>
-      v === undefined ? null : v;
-    S.plan_ns_override_l = pl.ns_override_l ?? null;
-    S.plan_ns_override_r = pl.ns_override_r ?? null;
-    S.plan_sv_preservation_l = tri(pl.sv_preservation_l);
-    S.plan_sv_preservation_r = tri(pl.sv_preservation_r);
-    S.plan_hydrodissection_l = tri(pl.hydrodissection_l);
-    S.plan_hydrodissection_r = tri(pl.hydrodissection_r);
-  }
 
   return S;
 }

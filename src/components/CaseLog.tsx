@@ -5,6 +5,7 @@ import { usePatientStore, savePatientToLibrary, loadPatientFromLibrary } from "@
 import { clinicalStateFromRecord } from "@/lib/compass/clinicalFromRecord";
 import { deriveClinicalFromLesions, lesionsFromRows } from "@/lib/utils/normalization";
 import { cn } from "@/lib/utils";
+import { BCR_COX_VERSION } from "@/lib/models/vnext/bcrCox";
 
 const CASE_LOG_KEY = "compass_cases";
 
@@ -16,6 +17,7 @@ export interface CaseRecord {
   vol: number;
   psad: string;
   gg: number;
+  // null = not recorded; the CSV writer emits an empty cell rather than 0.
   cores: number | null;
   maxcore: number | null;
   linear: number;
@@ -44,8 +46,12 @@ export interface CaseRecord {
   pred_ece_r: number | null;
   pred_svi: number;
   pred_upgrade: number | null;
-  pred_psm: number | null;
-  pred_bcr: number | null;
+  pred_psm: number;
+  /** Legacy: single-horizon BCR (%) from the earlier binary-logistic model. No longer written. */
+  pred_bcr?: number | null;
+  /** 36-month BCR risk (%) from the Cox model named in bcr_model_version. */
+  pred_bcr36: number | null;
+  bcr_model_version: string | null;
   pred_lni: number;
   ns_left: number;
   ns_right: number;
@@ -208,8 +214,9 @@ export function CaseLog({ onClose }: { onClose: () => void }) {
       pred_ece_r: Number.isFinite(predictions.eceR) ? Math.round(predictions.eceR * 100) : null,
       pred_svi: Math.round(predictions.svi * 100),
       pred_upgrade: Number.isFinite(predictions.upgrade) ? Math.round(predictions.upgrade * 100) : null,
-      pred_psm: Number.isFinite(predictions.psmL) && Number.isFinite(predictions.psmR) ? Math.round(Math.max(predictions.psmL, predictions.psmR) * 100) : null,
-      pred_bcr: Number.isFinite(predictions.bcr36) ? Math.round(predictions.bcr36 * 100) : null,
+      pred_psm: Number.isFinite(predictions.psmL) && Number.isFinite(predictions.psmR) ? Math.round(Math.max(predictions.psmL, predictions.psmR) * 100) : 0,
+      pred_bcr36: Number.isFinite(predictions.bcr36) ? Math.round(predictions.bcr36 * 100) : null,
+      bcr_model_version: Number.isFinite(predictions.bcr36) ? BCR_COX_VERSION : null,
       pred_lni: Math.round(predictions.lni * 100),
       ns_left: predictions.nsL,
       ns_right: predictions.nsR,
@@ -278,7 +285,7 @@ export function CaseLog({ onClose }: { onClose: () => void }) {
       "gg_left","gg_right","mri_epe","mri_svi","mri_size","mri_abutment","mri_adc",
       "mus_ece","mus_svi","suv","psma_ln","psma_lesions","psma_base","psma_svi",
       "ev_lesions","ev_base","lesion_count",
-      "pred_ece","pred_ece_l","pred_ece_r","pred_svi","pred_upgrade","pred_psm","pred_bcr","pred_lni",
+      "pred_ece","pred_ece_l","pred_ece_r","pred_svi","pred_upgrade","pred_psm","pred_bcr","pred_bcr36","bcr_model_version","pred_lni",
       "ns_left","ns_right",
       "path_ece","path_ece_l","path_ece_r","path_svi","path_upgrade","path_psm","path_lni","path_gg",
       "path_ns_l","path_ns_r","notes",

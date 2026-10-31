@@ -41,9 +41,10 @@ export const ZONE_ANATOMY: Record<
   "A-RA": { side: "R", zone: "apex" },
 };
 
-// Single source of truth is planningEvidence.ts (cited). Re-exported here for
-// any legacy importers.
-export { NS_ZONE_THRESHOLDS as NS_THRESHOLDS_EVIDENCE } from "@/lib/compass/planningEvidence";
+export const NS_THRESHOLDS = {
+  posterolateral: { grade2: 0.1, grade3: 0.3 },
+  base: { grade2: 0.1, grade3: 0.35 },
+} as const;
 
 export function createDefaultZones(): Record<
   CompassZoneKey,
@@ -92,7 +93,7 @@ export function createDefaultZones(): Record<
 }
 
 export function createBaseThreeZones(): ThreeZoneRuntime[] {
-  return ([
+  return [
     {
       id: "A-RB",
       name: "R Anterior Base",
@@ -261,5 +262,5 @@ export function createBaseThreeZones(): ThreeZoneRuntime[] {
       svi: 0.01,
       psm: 0.05,
     },
-  ] as Omit<ThreeZoneRuntime, "planGrade">[]).map((z) => ({ ...z, planGrade: 1 }));
+  ];
 }

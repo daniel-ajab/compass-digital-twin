@@ -44,8 +44,10 @@ function DimOverlay() {
     clinicalStateFromRecord(rec),
     lesionsFromRows(entry.lesionRows),
   );
-  const vol = entry.record.prostate.volume_cc ?? S.vol;
+  const vol = entry.record.prostate.volume_cc;
   const d = entry.record.prostate.dimensions_cm;
+  const psadValid =
+    S.required_present.psa && S.required_present.vol && isFinite(S.psad) && S.psad > 0;
   return (
     <div
       className={cn(
@@ -53,7 +55,7 @@ function DimOverlay() {
         MOBILE_CHROME_BOTTOM,
       )}
     >
-      <span className="font-semibold text-primary">{vol} cc</span>
+      <span className="font-semibold text-primary">{vol != null ? `${vol} cc` : "Volume not entered"}</span>
       {d && (
         <>
           {" "}
@@ -62,7 +64,7 @@ function DimOverlay() {
         </>
       )}
       {" | "}
-      PSAD <span className="text-primary">{S.psad.toFixed(3)}</span>
+      PSAD <span className="text-primary">{psadValid ? S.psad.toFixed(3) : "—"}</span>
     </div>
   );
 }

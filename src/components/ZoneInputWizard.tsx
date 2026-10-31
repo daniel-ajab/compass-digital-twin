@@ -181,12 +181,41 @@ function ChipSelector({ value, options, onChange, label }: {
 }
 
 // ── Labeled input row (label above, input grows to fill) ──────────────────────
+// ── Inputs by engine ─────────────────────────────────────────────────────────
+// The header switch picks the original (v22) or new (vNext) models. Inputs only
+// the v22 engine reads are hidden under vNext (their values are kept). Inputs
+// vNext reads only for the 3D zone map are labelled; so are the two inputs that
+// feed no prediction model in either engine.
+function V22Only({ children }: { children: React.ReactNode }) {
+  const modelSet = usePatientStore((s) => s.modelSet);
+  return modelSet === "v22" ? <>{children}</> : null;
+}
+
+const MODEL_TAG = {
+  "3d": { text: "3D only", title: "The new (vNext) models don't read this; it still shades the 3D zone map. The original (v22) models read it." },
+  ns: { text: "nerve-sparing alert only", title: "No prediction model reads this; it raises a nerve-sparing alert." },
+  none: { text: "not used by either model", title: "Neither the original (v22) nor the new (vNext) models read this input." },
+} as const;
+
+function ModelTag({ kind }: { kind: keyof typeof MODEL_TAG }) {
+  const modelSet = usePatientStore((s) => s.modelSet);
+  if (kind === "3d" && modelSet === "v22") return null;
+  return (
+    <span
+      className="ml-1.5 inline-block rounded bg-amber-500/15 px-1 py-px align-middle text-[9px] font-semibold normal-case tracking-normal text-amber-600 dark:text-amber-400"
+      title={MODEL_TAG[kind].title}
+    >
+      {MODEL_TAG[kind].text}
+    </span>
+  );
+}
+
 function FieldRow({
-  label, unit, children,
-}: { label: string; unit?: string; children: React.ReactNode }) {
+  label, unit, children, tag,
+}: { label: string; unit?: string; children: React.ReactNode; tag?: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}{tag}</span>
       <div className="flex items-center gap-1.5">
         <div className="min-w-0 flex-1">{children}</div>
         {unit && <span className="shrink-0 text-[10px] text-muted-foreground">{unit}</span>}
@@ -263,9 +292,9 @@ function ZoneDetail({ zone, data, onUpdate, onClear, onClose }: {
           </div>
           <ChipSelector label="PI-RADS" value={data.pirads} options={PIRADS_OPTS} onChange={(v) => onUpdate({ pirads: v })} />
           {hasMri && (<>
-            <FieldRow label="Size" unit="mm">
+            <V22Only><FieldRow label="Size" unit="mm">
               <Input type="number" step="0.5" min={0} placeholder="mm" className="h-8 w-full px-2 text-sm" value={data.mriSize ?? ""} onChange={(e) => { const v = parseFloat(e.target.value); onUpdate({ mriSize: isNaN(v) ? undefined : v }); }} />
-            </FieldRow>
+            </FieldRow></V22Only>
             <FieldRow label="ADC" unit="µm²/s">
               <Input type="number" step="10" min={0} placeholder="ADC" className="h-8 w-full px-2 text-sm" value={data.mriAdc ?? ""} onChange={(e) => { const v = parseFloat(e.target.value); onUpdate({ mriAdc: isNaN(v) ? undefined : v }); }} />
             </FieldRow>
@@ -289,7 +318,7 @@ function ZoneDetail({ zone, data, onUpdate, onClear, onClose }: {
           <ChipSelector label="PRI-MUS" value={data.primus} options={MUS_OPTS} onChange={(v) => onUpdate({ primus: v })} />
           {(data.primus ?? 0) > 0 && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" checked={data.musEce ?? false} onChange={(e) => onUpdate({ musEce: e.target.checked })} />ECE on MUS</label>
+              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" checked={data.musEce ?? false} onChange={(e) => onUpdate({ musEce: e.target.checked })} />ECE on MUS<ModelTag kind="3d" /></label>
               <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" checked={data.musAbut ?? false} onChange={(e) => onUpdate({ musAbut: e.target.checked })} />Abutment</label>
             </div>
           )}
@@ -300,13 +329,13 @@ function ZoneDetail({ zone, data, onUpdate, onClear, onClose }: {
             <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-purple-500 text-[9px] font-bold text-white">P</span>
             <span className="text-xs font-bold uppercase tracking-wider text-purple-400">PSMA PET</span>
           </div>
-          <FieldRow label="SUVmax">
+          <FieldRow label="SUVmax" tag={<ModelTag kind="3d" />}>
             <Input type="number" step="0.1" min={0} placeholder="e.g. 12.4" className="h-8 w-full px-2 text-sm" value={data.suv ?? ""} onChange={(e) => { const v = parseFloat(e.target.value); onUpdate({ suv: isNaN(v) ? undefined : v }); }} />
           </FieldRow>
           {(data.suv ?? 0) > 0 && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" checked={data.psmaEpe ?? false} onChange={(e) => onUpdate({ psmaEpe: e.target.checked })} />EPE</label>
-              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" checked={data.psmaSvi ?? false} onChange={(e) => onUpdate({ psmaSvi: e.target.checked })} />SVI</label>
+              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" checked={data.psmaEpe ?? false} onChange={(e) => onUpdate({ psmaEpe: e.target.checked })} />EPE<ModelTag kind="3d" /></label>
+              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" checked={data.psmaSvi ?? false} onChange={(e) => onUpdate({ psmaSvi: e.target.checked })} />SVI<ModelTag kind="ns" /></label>
               <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" checked={data.psmaLn ?? false} onChange={(e) => onUpdate({ psmaLn: e.target.checked })} />LN+</label>
             </div>
           )}
@@ -322,13 +351,13 @@ function ZoneDetail({ zone, data, onUpdate, onClear, onClose }: {
             <FieldRow label="Core %" unit="%">
               <Input type="number" step="1" min={0} max={100} placeholder="0–100" className="h-8 w-full px-2 text-sm" value={data.corePct ?? ""} onChange={(e) => { const v = parseFloat(e.target.value); onUpdate({ corePct: isNaN(v) ? undefined : v }); }} />
             </FieldRow>
-            <FieldRow label="Linear" unit="mm">
+            <FieldRow label="Linear" unit="mm" tag={<ModelTag kind="3d" />}>
               <Input type="number" step="0.5" min={0} placeholder="mm" className="h-8 w-full px-2 text-sm" value={data.linearMm ?? ""} onChange={(e) => { const v = parseFloat(e.target.value); onUpdate({ linearMm: isNaN(v) ? undefined : v }); }} />
             </FieldRow>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" checked={data.cribriform ?? false} onChange={(e) => onUpdate({ cribriform: e.target.checked })} />Cribriform</label>
-              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" checked={data.idc ?? false} onChange={(e) => onUpdate({ idc: e.target.checked })} />IDC</label>
-              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" checked={data.pni ?? false} onChange={(e) => onUpdate({ pni: e.target.checked })} />PNI</label>
+              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" checked={data.cribriform ?? false} onChange={(e) => onUpdate({ cribriform: e.target.checked })} />Cribriform<ModelTag kind="3d" /></label>
+              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" checked={data.idc ?? false} onChange={(e) => onUpdate({ idc: e.target.checked })} />IDC<ModelTag kind="none" /></label>
+              <V22Only><label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-primary" checked={data.pni ?? false} onChange={(e) => onUpdate({ pni: e.target.checked })} />PNI</label></V22Only>
             </div>
           </>)}
         </div>
@@ -586,10 +615,10 @@ export function ZoneInputWizard() {
             )}
 
             <div className="grid grid-cols-3 gap-5">
-              <div className="space-y-2">
+              <V22Only><div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground" htmlFor="wiz-dec">Decipher <span className="font-normal text-muted-foreground">(0–1)</span></label>
                 <Input id="wiz-dec" type="text" inputMode="decimal" placeholder="0.52" value={decipher} onChange={(e) => handleDecipherChange(e.target.value)} className="h-11 text-base" />
-              </div>
+              </div></V22Only>
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-foreground" htmlFor="wiz-shim">SHIM <span className="font-normal text-muted-foreground">(0–25)</span></label>
                 <Input id="wiz-shim" type="number" min={0} max={25} inputMode="numeric" placeholder="21" value={shim} onChange={(e) => handleShimChange(e.target.value)} className="h-11 text-base" />

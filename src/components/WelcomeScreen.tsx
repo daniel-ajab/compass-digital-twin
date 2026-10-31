@@ -3,7 +3,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { useUiStore } from "@/store/uiStore";
 
-const APP_URL = "https://urology-ai.github.io/digital-twin/";
+const APP_URL = "https://daniel-ajab.github.io/compass-digital-twin/";
 
 /**
  * Mount Sinai brand mark — uses the official asset files in /public.
@@ -180,7 +180,7 @@ export function WelcomeScreen() {
               className="text-muted-foreground/80 underline-offset-2 hover:text-foreground hover:underline"
               style={{ fontSize: "clamp(0.625rem, 1.05vw, 0.6875rem)" }}
             >
-              Scan to open · urology-ai.github.io/digital-twin
+              Scan to open · daniel-ajab.github.io/compass-digital-twin
             </a>
           </div>
 

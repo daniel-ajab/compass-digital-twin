@@ -1,4 +1,4 @@
-export type OverlayType = "cancer" | "ece" | "svi" | "psm" | "plan";
+export type OverlayType = "cancer" | "ece" | "svi" | "psm";
 
 export interface NsAlert {
   type: string;
@@ -39,73 +39,7 @@ export interface CompassPredictions {
   sviR: number;
   nsDetailL: NsSideDetail;
   nsDetailR: NsSideDetail;
-  inflammation: InflammationRisk;
-  plan: SurgicalPlan;
 }
-
-export type InflammationTier = "low" | "moderate" | "high";
-
-export interface InflammationRisk {
-  score: number;
-  tier: InflammationTier;
-  contributors: { label: string; points: number; evidence: "direct" | "surrogate" | "unvalidated" | "null" | "none" }[];
-  reviewMri: boolean;
-  intraopObserved: boolean;
-  intraopDriven: boolean;
-}
-
-/** A recommendation + a one-line rationale. Citations live in planningEvidence.ts. */
-export interface PlanRec<T> {
-  value: T;
-  rationale: string;
-}
-
-export interface SidePlan {
-  side: "left" | "right";
-  /** final grade actually planned (model + inflammation escalation + surgeon override) */
-  nsGrade: number;
-  /** the model's zone-aware grade before inflammation escalation or override */
-  modelGrade: number;
-  /** what the model recommends = modelGrade + inflammation escalation, no override */
-  recommendedGrade: number;
-  /** PIPS decision-matrix grade: modelGrade + 1 when side EPE is high, else modelGrade (advisory) */
-  pipsGrade: number;
-  /** true when the surgeon override differs from recommendedGrade */
-  overridden: boolean;
-  /** why the model landed on this grade, + any inflammation escalation note */
-  gradeRationale: string;
-  plane: string;
-  planeNote: string;
-  zoneGrades: Record<string, number>;
-  hydrodissection: PlanRec<boolean>;
-  svPreservation: PlanRec<boolean>;
-  cautions: string[];
-  /** PIPS-EPE tier used by the decision matrix (oncologic axis, independent of hostility) */
-  epeTier: "low" | "intermediate" | "high";
-  /** PIPS-H — side-specific plane-hostility probability, independent of EPE */
-  hostilityScore: number;
-  hostilityTier: "low" | "intermediate" | "high" | "very-high";
-  /** true when a hostile plane calls for the operative protocol note without widening the plane */
-  hostileProtocol: boolean;
-  decisionCode: "maximal" | "preserve-hostile-protocol" | "wider-plane" | "graded-frozen-section" | "defer";
-}
-
-/** Hard-stop / review gates — whole-patient facts, never folded into either PIPS axis's score. */
-export interface PipsGates {
-  activeInfection: boolean;
-  imagingDiscordant: boolean;
-  mriArtifact: boolean;
-  keyDataMissing: boolean;
-}
-
-export interface SurgicalPlan {
-  left: SidePlan;
-  right: SidePlan;
-  gates: PipsGates;
-}
-
-/** Tri-state surgeon override: null = follow the model recommendation. */
-export type OverrideTri = boolean | null;
 
 export interface PlndRecommendation {
   title: string;
@@ -125,6 +59,4 @@ export interface ThreeZoneRuntime {
   ece: number;
   svi: number;
   psm: number;
-  /** recommended NS grade for this zone (1–3), for the "plan" overlay */
-  planGrade: number;
 }
